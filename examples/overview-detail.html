@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeline: Overview + Detail Pattern</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container { max-width: 900px; margin: 0 auto; }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+    }
+
+    /* Overview timeline (compact) */
+    .overview-timeline {
+      display: flex;
+      position: relative;
+      height: 60px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      padding: 0 12px;
+      align-items: center;
+    }
+
+    .overview-event {
+      position: absolute;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #0066cc;
+      cursor: pointer;
+      transition: all 200ms ease;
+    }
+
+    .overview-event:hover {
+      width: 12px;
+      height: 12px;
+      background: #0052a3;
+      box-shadow: 0 0 8px rgba(0, 102, 204, 0.4);
+    }
+
+    .overview-event.selected {
+      width: 12px;
+      height: 12px;
+      background: #ff6b35;
+      box-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+    }
+
+    /* Zoom window (visual indicator) */
+    .zoom-window {
+      position: absolute;
+      height: 100%;
+      border: 2px solid #0066cc;
+      background: rgba(0, 102, 204, 0.1);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+
+    /* Detail timeline (expanded view) */
+    .detail-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .detail-event {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      padding: 12px;
+      border-left: 3px solid #e0e0e0;
+      border-radius: 4px;
+      background: #fafafa;
+      cursor: pointer;
+      transition: all 150ms ease;
+    }
+
+    .detail-event:hover {
+      background: #f0f0f0;
+      border-left-color: #0066cc;
+    }
+
+    .detail-event.active {
+      background: #e8f3ff;
+      border-left-color: #ff6b35;
+    }
+
+    .event-dot {
+      flex-shrink: 0;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #0066cc;
+      margin-top: 4px;
+    }
+
+    .detail-event.active .event-dot {
+      background: #ff6b35;
+      box-shadow: 0 0 8px rgba(255, 107, 53, 0.4);
+    }
+
+    .event-content {
+      flex: 1;
+    }
+
+    .event-time {
+      font-size: 12px;
+      color: #999;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .event-label {
+      font-size: 15px;
+      font-weight: 500;
+      color: #333;
+      margin: 4px 0;
+    }
+
+    .event-category {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 2px;
+      background: #e0e7ff;
+      color: #4c51bf;
+      font-weight: 500;
+    }
+
+    .event-description {
+      font-size: 13px;
+      color: #666;
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    /* Sync indicator */
+    .sync-info {
+      font-size: 12px;
+      color: #999;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .sync-info strong {
+      color: #666;
+    }
+
+    /* Keyboard hint */
+    .hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 16px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Timeline: Overview + Detail Pattern</h1>
+    <p class="subtitle">Coordinated zoom and pan across two time scales • Synthetic data example</p>
+
+    <div class="panel">
+      <div class="panel-title">Overview (Full Range)</div>
+      <div class="overview-timeline" id="overview">
+        <div class="zoom-window" id="zoomWindow"></div>
+        <!-- Event dots populated by JS -->
+      </div>
+      <p class="hint">Overview shows all events; blue highlight shows detail view zoom window</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Detail (Zoomed View)</div>
+      <div class="detail-timeline" id="detail">
+        <!-- Detail events populated by JS -->
+      </div>
+      <div class="sync-info">
+        <strong>Selected:</strong> <span id="selectedLabel">None</span>
+      </div>
+      <p class="hint">Click an event to select it; hover for preview</p>
+    </div>
+  </div>
+
+  <script>
+    // Synthetic event data (matches synthetic-events.json structure)
+    const events = [
+      {
+        id: 'evt-001',
+        timestamp: '2026-01-15T10:00:00Z',
+        label: 'Cluster Init',
+        category: 'deployment',
+        description: 'Demo Cluster A initialization started'
+      },
+      {
+        id: 'evt-002',
+        timestamp: '2026-01-15T10:15:30Z',
+        label: 'Health Check',
+        category: 'monitoring',
+        description: 'Initial health check: all nodes responding'
+      },
+      {
+        id: 'evt-003',
+        timestamp: '2026-01-15T10:45:00Z',
+        label: 'Config Applied',
+        category: 'deployment',
+        description: 'Cluster configuration applied successfully'
+      },
+      {
+        id: 'evt-004',
+        timestamp: '2026-01-15T11:20:15Z',
+        label: 'Ready',
+        category: 'deployment',
+        description: 'Demo Cluster A now ready for use'
+      }
+    ];
+
+    let selectedEventId = null;
+    const timeRange = [new Date('2026-01-15T09:00:00Z'), new Date('2026-01-15T12:00:00Z')];
+    const detailZoom = [new Date('2026-01-15T10:00:00Z'), new Date('2026-01-15T11:30:00Z')];
+
+    function getPosition(date) {
+      const range = timeRange[1] - timeRange[0];
+      const pos = (date - timeRange[0]) / range;
+      return Math.max(0, Math.min(1, pos));
+    }
+
+    function formatTime(isoString) {
+      const dt = new Date(isoString);
+      return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function renderOverview() {
+      const overview = document.getElementById('overview');
+      overview.innerHTML = '<div class="zoom-window" id="zoomWindow"></div>';
+
+      // Add event dots
+      events.forEach(event => {
+        const dot = document.createElement('div');
+        dot.className = 'overview-event' + (event.id === selectedEventId ? ' selected' : '');
+        const pos = getPosition(new Date(event.timestamp));
+        dot.style.left = (pos * 100) + '%';
+        dot.title = event.label;
+        dot.addEventListener('click', () => selectEvent(event.id));
+        overview.appendChild(dot);
+      });
+
+      // Update zoom window position
+      const zoomStart = getPosition(detailZoom[0]);
+      const zoomEnd = getPosition(detailZoom[1]);
+      const zoomWindow = document.getElementById('zoomWindow');
+      zoomWindow.style.left = (zoomStart * 100) + '%';
+      zoomWindow.style.width = ((zoomEnd - zoomStart) * 100) + '%';
+    }
+
+    function renderDetail() {
+      const detail = document.getElementById('detail');
+      detail.innerHTML = '';
+
+      // Filter to detail range
+      const filtered = events.filter(e => {
+        const date = new Date(e.timestamp);
+        return date >= detailZoom[0] && date <= detailZoom[1];
+      });
+
+      filtered.forEach(event => {
+        const elem = document.createElement('div');
+        elem.className = 'detail-event' + (event.id === selectedEventId ? ' active' : '');
+        elem.innerHTML = `
+          <div class="event-dot"></div>
+          <div class="event-content">
+            <div class="event-time">${formatTime(event.timestamp)}</div>
+            <div class="event-label">${event.label}</div>
+            <span class="event-category">${event.category}</span>
+            <div class="event-description">${event.description}</div>
+          </div>
+        `;
+        elem.addEventListener('click', () => selectEvent(event.id));
+        detail.appendChild(elem);
+      });
+    }
+
+    function selectEvent(eventId) {
+      selectedEventId = eventId;
+      const event = events.find(e => e.id === eventId);
+      document.getElementById('selectedLabel').textContent = event ? event.label : 'None';
+      render();
+    }
+
+    function render() {
+      renderOverview();
+      renderDetail();
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>

@@ -13,6 +13,15 @@ docs/
   reuse-policy.md    - synthetic-only usage rules
 ```
 
+## Examples
+
+All examples run standalone in a browser and use synthetic data.
+
+- **[basic.html](examples/basic.html)** — Simple horizontal timeline with 4 events, hover states, and datetime labels
+- **[overview-detail.html](examples/overview-detail.html)** — Coordinated overview and detail views with zoom window and cross-linked event selection
+- **[semantic-feed.html](examples/semantic-feed.html)** — Grouped event presentation by category (deployment, monitoring) with visual hierarchy
+- **[keyboard-navigation.html](examples/keyboard-navigation.html)** — Full keyboard navigation with arrow keys, Home/End, Enter/Space, and focus management
+
 ## Preserved interaction patterns
 
 - **datetime axis** — navigable time scale with zoom/pan

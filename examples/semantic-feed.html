@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeline: Semantic Feed Pattern</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+
+    /* Semantic timeline feed */
+    .timeline-feed {
+      position: relative;
+    }
+
+    /* Vertical spine */
+    .timeline-feed::before {
+      content: '';
+      position: absolute;
+      left: 20px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, #0066cc 0%, #0066cc 30%, transparent 100%);
+    }
+
+    /* Group container */
+    .event-group {
+      margin-bottom: 32px;
+      position: relative;
+    }
+
+    .group-marker {
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid #0066cc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: #0066cc;
+      z-index: 10;
+    }
+
+    .group-label {
+      margin-left: 48px;
+      margin-bottom: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    /* Individual events within group */
+    .event-item {
+      margin-left: 48px;
+      margin-bottom: 12px;
+      padding: 12px;
+      background: white;
+      border-radius: 6px;
+      border-left: 3px solid #e0e0e0;
+      transition: all 150ms ease;
+      cursor: pointer;
+    }
+
+    .event-item:hover {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      border-left-color: #0066cc;
+    }
+
+    .event-time {
+      font-size: 12px;
+      color: #999;
+      font-variant-numeric: tabular-nums;
+      margin-bottom: 4px;
+    }
+
+    .event-title {
+      font-size: 15px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .event-badge {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-weight: 500;
+      background: #e0e7ff;
+      color: #4c51bf;
+    }
+
+    .event-detail {
+      font-size: 13px;
+      color: #666;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    /* Group categories with color coding */
+    .event-group.deployment .group-marker {
+      border-color: #ff6b35;
+      color: #ff6b35;
+    }
+
+    .event-group.deployment .group-label {
+      color: #ff6b35;
+    }
+
+    .event-group.deployment .event-item:hover {
+      border-left-color: #ff6b35;
+    }
+
+    .event-group.monitoring .group-marker {
+      border-color: #4caf50;
+      color: #4caf50;
+    }
+
+    .event-group.monitoring .group-label {
+      color: #4caf50;
+    }
+
+    .event-group.monitoring .event-item:hover {
+      border-left-color: #4caf50;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 20px;
+      margin-top: 32px;
+      padding-top: 16px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 13px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+      background: #e0e7ff;
+    }
+
+    .legend-item.deployment .legend-dot {
+      background: #ff6b35;
+    }
+
+    .legend-item.monitoring .legend-dot {
+      background: #4caf50;
+    }
+
+    .hint {
+      font-size: 12px;
+      color: #999;
+      margin-top: 16px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Timeline: Semantic Feed Pattern</h1>
+    <p class="subtitle">Events grouped by category and time with visual hierarchy • Synthetic data example</p>
+
+    <div class="timeline-feed" id="feed">
+      <!-- Groups populated by JS -->
+    </div>
+
+    <div class="legend">
+      <div class="legend-item deployment">
+        <div class="legend-dot"></div>
+        <span>Deployment</span>
+      </div>
+      <div class="legend-item monitoring">
+        <div class="legend-dot"></div>
+        <span>Monitoring</span>
+      </div>
+    </div>
+
+    <p class="hint">Events are grouped by category and presented in reverse chronological order within each group</p>
+  </div>
+
+  <script>
+    // Synthetic event data
+    const events = [
+      {
+        id: 'evt-001',
+        timestamp: '2026-01-15T10:00:00Z',
+        label: 'Cluster Init',
+        category: 'deployment',
+        description: 'Demo Cluster A initialization started'
+      },
+      {
+        id: 'evt-002',
+        timestamp: '2026-01-15T10:15:30Z',
+        label: 'Health Check',
+        category: 'monitoring',
+        description: 'Initial health check: all nodes responding'
+      },
+      {
+        id: 'evt-003',
+        timestamp: '2026-01-15T10:45:00Z',
+        label: 'Config Applied',
+        category: 'deployment',
+        description: 'Cluster configuration applied successfully'
+      },
+      {
+        id: 'evt-004',
+        timestamp: '2026-01-15T11:20:15Z',
+        label: 'Ready',
+        category: 'deployment',
+        description: 'Demo Cluster A now ready for use'
+      }
+    ];
+
+    function formatTime(isoString) {
+      const dt = new Date(isoString);
+      return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function groupByCategory(eventList) {
+      const groups = {};
+      eventList.forEach(event => {
+        if (!groups[event.category]) {
+          groups[event.category] = [];
+        }
+        groups[event.category].push(event);
+      });
+      return groups;
+    }
+
+    function render() {
+      const feed = document.getElementById('feed');
+      feed.innerHTML = '';
+
+      const grouped = groupByCategory(events);
+      let groupIndex = 0;
+
+      // Render groups in order of category
+      Object.keys(grouped).forEach(category => {
+        groupIndex++;
+        const groupEvents = grouped[category];
+
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'event-group ' + category;
+
+        // Group marker
+        const marker = document.createElement('div');
+        marker.className = 'group-marker';
+        marker.textContent = groupIndex;
+
+        // Group label
+        const label = document.createElement('div');
+        label.className = 'group-label';
+        label.textContent = category.charAt(0).toUpperCase() + category.slice(1);
+
+        groupDiv.appendChild(marker);
+        groupDiv.appendChild(label);
+
+        // Events in group (reverse chronological)
+        groupEvents.reverse().forEach(event => {
+          const eventDiv = document.createElement('div');
+          eventDiv.className = 'event-item';
+          eventDiv.title = event.id;
+          eventDiv.innerHTML = `
+            <div class="event-time">${formatTime(event.timestamp)}</div>
+            <div class="event-title">${event.label}</div>
+            <span class="event-badge">${event.category}</span>
+            <div class="event-detail">${event.description}</div>
+          `;
+          groupDiv.appendChild(eventDiv);
+        });
+
+        feed.appendChild(groupDiv);
+      });
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>

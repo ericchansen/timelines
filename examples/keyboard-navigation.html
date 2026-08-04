@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeline: Keyboard Navigation Pattern</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 8px;
+      color: #333;
+    }
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+    }
+
+    /* Timeline list */
+    .timeline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .timeline-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #fafafa;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 150ms ease;
+      outline: none;
+    }
+
+    .timeline-item:hover {
+      background: #f0f0f0;
+      border-color: #0066cc;
+    }
+
+    .timeline-item:focus {
+      border-color: #0066cc;
+      background: #e8f3ff;
+      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+    }
+
+    .timeline-item.active {
+      background: #e8f3ff;
+      border-color: #ff6b35;
+    }
+
+    .timeline-item.active:focus {
+      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+    }
+
+    .item-dot {
+      flex-shrink: 0;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #0066cc;
+    }
+
+    .timeline-item.active .item-dot {
+      background: #ff6b35;
+    }
+
+    .item-content {
+      flex: 1;
+    }
+
+    .item-time {
+      font-size: 12px;
+      color: #999;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .item-label {
+      font-size: 15px;
+      font-weight: 500;
+      color: #333;
+    }
+
+    .item-category {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 6px;
+      margin-top: 4px;
+      border-radius: 2px;
+      background: #e0e7ff;
+      color: #4c51bf;
+    }
+
+    /* Status and hints */
+    .status-bar {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #666;
+    }
+
+    .status-value {
+      font-weight: 600;
+      color: #333;
+    }
+
+    .keyboard-hints {
+      background: #f0f8ff;
+      border-left: 3px solid #0066cc;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #555;
+    }
+
+    .keyboard-hints strong {
+      color: #0066cc;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .hint-row {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 6px;
+    }
+
+    .hint-key {
+      min-width: 100px;
+      font-family: 'Courier New', monospace;
+      font-weight: 500;
+      color: #0066cc;
+    }
+
+    .hint-desc {
+      flex: 1;
+      color: #666;
+    }
+
+    .hint-row:last-child {
+      margin-bottom: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Timeline: Keyboard Navigation Pattern</h1>
+    <p class="subtitle">Full keyboard navigation, focus management, and arrow key parity • Synthetic data example</p>
+
+    <div class="panel">
+      <div class="panel-title">Events (Use Arrow Keys)</div>
+      <div class="timeline-list" id="timeline" role="listbox">
+        <!-- Items populated by JS -->
+      </div>
+
+      <div class="status-bar">
+        <div>Selected: <span class="status-value" id="selectedLabel">None</span></div>
+        <div style="margin-top: 6px;">Focus Index: <span class="status-value" id="focusIndex">—</span></div>
+      </div>
+
+      <div class="keyboard-hints">
+        <strong>⌨️ Keyboard Controls</strong>
+        <div class="hint-row">
+          <div class="hint-key">↑ / ↓</div>
+          <div class="hint-desc">Navigate between events</div>
+        </div>
+        <div class="hint-row">
+          <div class="hint-key">Home / End</div>
+          <div class="hint-desc">Jump to first / last event</div>
+        </div>
+        <div class="hint-row">
+          <div class="hint-key">Enter / Space</div>
+          <div class="hint-desc">Select focused event</div>
+        </div>
+        <div class="hint-row">
+          <div class="hint-key">Tab</div>
+          <div class="hint-desc">Move focus into / out of timeline</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Synthetic event data
+    const events = [
+      {
+        id: 'evt-001',
+        timestamp: '2026-01-15T10:00:00Z',
+        label: 'Cluster Init',
+        category: 'deployment'
+      },
+      {
+        id: 'evt-002',
+        timestamp: '2026-01-15T10:15:30Z',
+        label: 'Health Check',
+        category: 'monitoring'
+      },
+      {
+        id: 'evt-003',
+        timestamp: '2026-01-15T10:45:00Z',
+        label: 'Config Applied',
+        category: 'deployment'
+      },
+      {
+        id: 'evt-004',
+        timestamp: '2026-01-15T11:20:15Z',
+        label: 'Ready',
+        category: 'deployment'
+      }
+    ];
+
+    let focusIndex = 0;
+    let selectedEventId = null;
+
+    function formatTime(isoString) {
+      const dt = new Date(isoString);
+      return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function updateSelection(newIndex) {
+      focusIndex = Math.max(0, Math.min(newIndex, events.length - 1));
+      selectedEventId = events[focusIndex].id;
+      render();
+    }
+
+    function handleKeyDown(e) {
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          updateSelection(focusIndex - 1);
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          updateSelection(focusIndex + 1);
+          break;
+        case 'Home':
+          e.preventDefault();
+          updateSelection(0);
+          break;
+        case 'End':
+          e.preventDefault();
+          updateSelection(events.length - 1);
+          break;
+        case 'Enter':
+        case ' ':
+          e.preventDefault();
+          // Already selected via focus
+          break;
+      }
+    }
+
+    function render() {
+      const timeline = document.getElementById('timeline');
+      timeline.innerHTML = '';
+
+      events.forEach((event, index) => {
+        const item = document.createElement('div');
+        item.className = 'timeline-item' + (index === focusIndex ? ' active' : '');
+        item.tabIndex = index === focusIndex ? 0 : -1;
+        item.role = 'option';
+        item.aria-selected = index === focusIndex;
+        item.innerHTML = `
+          <div class="item-dot"></div>
+          <div class="item-content">
+            <div class="item-time">${formatTime(event.timestamp)}</div>
+            <div class="item-label">${event.label}</div>
+            <div class="item-category">${event.category}</div>
+          </div>
+        `;
+        item.addEventListener('click', () => updateSelection(index));
+        item.addEventListener('keydown', handleKeyDown);
+        timeline.appendChild(item);
+      });
+
+      // Update status
+      document.getElementById('selectedLabel').textContent = events[focusIndex].label;
+      document.getElementById('focusIndex').textContent = focusIndex;
+
+      // Restore focus
+      const focusedItem = timeline.querySelector('[aria-selected="true"]');
+      if (focusedItem) {
+        focusedItem.focus();
+      }
+    }
+
+    // Initial render (focus first item)
+    render();
+  </script>
+</body>
+</html>
