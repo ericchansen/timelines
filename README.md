@@ -9,11 +9,12 @@ Reusable timeline examples and components with **synthetic data only**. This rep
 ```
 index.html           - GitHub Pages landing page
 src/
-  timeline/          - reusable timeline interaction components
+  timeline/          - shared dependency-free CSS and JavaScript core
   fixtures/          - synthetic event datasets
 examples/            - runnable example entrypoints
 docs/
-  reuse-policy.md    - synthetic-only usage rules
+  examples.html      - browser-readable example and API guide
+  reuse-policy.html  - browser-readable synthetic-only policy
 .github/workflows/   - GitHub Pages deployment
 ```
 
@@ -22,10 +23,10 @@ docs/
 All examples run standalone in a browser and use synthetic data.
 
 - **[Landing page](index.html)** — Polished index with embedded previews and project-relative links
-- **[basic.html](examples/basic.html)** — Simple horizontal timeline with 4 events, hover states, and datetime labels
-- **[overview-detail.html](examples/overview-detail.html)** — Coordinated overview and detail views with zoom window and cross-linked event selection
-- **[semantic-feed.html](examples/semantic-feed.html)** — Grouped event presentation by category (deployment, monitoring) with visual hierarchy
-- **[keyboard-navigation.html](examples/keyboard-navigation.html)** — Full keyboard navigation with arrow keys, Home/End, Enter/Space, and focus management
+- **[basic.html](examples/basic.html)** — Proportional UTC axis with a narrow-screen vertical layout
+- **[overview-detail.html](examples/overview-detail.html)** — Pointer/touch pan, two resize handles, keyboard parity, preview, pinned selection, and auto-pan
+- **[semantic-feed.html](examples/semantic-feed.html)** — Non-interactive grouped reading structure with non-color category cues
+- **[keyboard-navigation.html](examples/keyboard-navigation.html)** — Roving focus with arrow keys, Home/End, and explicit Enter/Space selection
 
 ## Preserved interaction patterns
 
@@ -36,6 +37,20 @@ All examples run standalone in a browser and use synthetic data.
 - **keyboard parity** — all mouse interactions available via keyboard
 - **readable labels** — text and layout that scale with dense timelines
 - **semantic feed** — grouped event presentation where useful
+
+## Shared core
+
+All examples load:
+
+```html
+<link rel="stylesheet" href="../src/timeline/timeline.css">
+<script src="../src/timeline/timeline.js"></script>
+<script src="../src/fixtures/synthetic-events.js"></script>
+```
+
+`TimelineKit` provides range math, proportional positioning, clamped pan and resize, explicit UTC labels, roving focus, selection state, pointer-capture drag, and embed mode. Geometry uses `--tl-*` variables; theme aliases consume the host page's `--cp-*` colors.
+
+Run `npm test` for the dependency-free validation suite.
 
 ## Reuse policy
 
