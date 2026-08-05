@@ -2,21 +2,26 @@
 
 Reusable timeline examples and components with **synthetic data only**. This repository preserves and shares best practices for interactive timeline interactions: datetime axis, overview/detail, hover/focus, pinned selection, keyboard parity, readable labels, and semantic feed presentation.
 
+**[Explore the live examples](https://ericchansen.github.io/timelines/)**
+
 ## Repo structure
 
 ```
+index.html           - GitHub Pages landing page
 src/
   timeline/          - reusable timeline interaction components
   fixtures/          - synthetic event datasets
 examples/            - runnable example entrypoints
 docs/
   reuse-policy.md    - synthetic-only usage rules
+.github/workflows/   - GitHub Pages deployment
 ```
 
 ## Examples
 
 All examples run standalone in a browser and use synthetic data.
 
+- **[Landing page](index.html)** — Polished index with embedded previews and project-relative links
 - **[basic.html](examples/basic.html)** — Simple horizontal timeline with 4 events, hover states, and datetime labels
 - **[overview-detail.html](examples/overview-detail.html)** — Coordinated overview and detail views with zoom window and cross-linked event selection
 - **[semantic-feed.html](examples/semantic-feed.html)** — Grouped event presentation by category (deployment, monitoring) with visual hierarchy
