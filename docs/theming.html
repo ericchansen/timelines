@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Theming · Timeline components</title>
+  <link rel="icon" href="../src/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../src/timeline.css">
+</head>
+<body>
+  <main class="tl-page">
+    <header class="tl-page-header">
+      <div>
+        <p class="tl-eyebrow"><a href="./index.html">Documentation</a> / Theming</p>
+        <h1>Change the theme, not the geometry.</h1>
+        <p class="tl-lede">Structural tokens and color tokens are separate contracts so visual organization never depends on hue.</p>
+      </div>
+    </header>
+    <div class="tl-doc-grid">
+      <article class="tl-doc-card">
+        <h2>Structural tokens</h2>
+        <p><code>--tl-space-*</code>, <code>--tl-radius-*</code>, <code>--tl-hit-target</code>, <code>--tl-axis-width</code>, <code>--tl-marker-size</code>, and <code>--tl-motion-fast</code> control layout and interaction geometry.</p>
+      </article>
+      <article class="tl-doc-card">
+        <h2>Theme tokens</h2>
+        <p><code>--tl-color-page</code>, <code>--tl-color-surface</code>, <code>--tl-color-ink</code>, <code>--tl-color-muted</code>, <code>--tl-color-border</code>, <code>--tl-color-axis</code>, and the accent tokens control appearance.</p>
+      </article>
+    </div>
+    <section class="tl-doc-card">
+      <h2>Override color safely</h2>
+      <pre><code>.my-timeline {
+  --tl-color-accent: #245f5d;
+  --tl-color-accent-strong: #174744;
+  --tl-color-axis: #70797b;
+}</code></pre>
+      <p>Color overrides do not move marker centers, lane spacing, hit targets, or collision lanes. The catalog includes explicit light and dark themes and honors reduced-motion preferences.</p>
+    </section>
+  </main>
+</body>
+</html>

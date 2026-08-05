@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Getting started · Timeline components</title>
+  <link rel="icon" href="../src/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../src/timeline.css">
+</head>
+<body>
+  <main class="tl-page">
+    <header class="tl-page-header">
+      <div>
+        <p class="tl-eyebrow"><a href="./index.html">Documentation</a> / Getting started</p>
+        <h1>Render directly. Keep the lifecycle explicit.</h1>
+        <p class="tl-lede">The package ships as native ES modules and CSS with no build step or runtime dependencies.</p>
+      </div>
+    </header>
+    <section class="tl-doc-card">
+      <h2>Import a renderer</h2>
+      <pre><code>&lt;link rel=&quot;stylesheet&quot; href=&quot;./node_modules/timelines/src/timeline.css&quot;&gt;
+&lt;div id=&quot;timeline&quot;&gt;&lt;/div&gt;
+&lt;script type=&quot;module&quot;&gt;
+  import { renderProportionalRun } from &quot;./node_modules/timelines/src/index.js&quot;;
+
+  const handle = renderProportionalRun(document.querySelector(&quot;#timeline&quot;), {
+    data: [
+      { id: &quot;fiction-a&quot;, time: &quot;2026-05-01T00:00:00Z&quot;, label: &quot;Paper moon opened&quot; },
+      { id: &quot;fiction-b&quot;, time: &quot;2026-05-08T00:00:00Z&quot;, label: &quot;Paper moon folded&quot; }
+    ]
+  });
+&lt;/script&gt;</code></pre>
+      <h2>Own the handle</h2>
+      <p>The container must be a DOM element. Renderers observe its size when <code>ResizeObserver</code> is available. Use <code>update()</code> for new immutable options, <code>setSelection()</code> for controlled selection, and <code>destroy()</code> when the host view unmounts.</p>
+      <p><a href="./api.html">Continue to the API reference</a>.</p>
+    </section>
+  </main>
+</body>
+</html>

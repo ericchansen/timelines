@@ -1,64 +1,70 @@
-# timelines
+# Timeline Components
 
-Reusable timeline examples and components with **synthetic data only**. This repository preserves and shares best practices for interactive timeline interactions: datetime axis, overview/detail, hover/focus, pinned selection, keyboard parity, readable labels, and semantic feed presentation.
+A build-free, framework-agnostic timeline library and GitHub Pages component catalog. The package ships native ES modules, CSS, TypeScript declarations, twelve named renderers, and no runtime dependencies.
 
-**[Explore the live examples](https://ericchansen.github.io/timelines/)**
+## Install
 
-## Repo structure
-
-```
-index.html           - GitHub Pages landing page
-src/
-  timeline/          - shared dependency-free CSS and JavaScript core
-  fixtures/          - synthetic event datasets
-examples/            - runnable example entrypoints
-docs/
-  examples.html      - browser-readable example and API guide
-  reuse-policy.html  - browser-readable synthetic-only policy
-.github/workflows/   - GitHub Pages deployment
+```bash
+npm install timelines
 ```
 
-## Examples
+```js
+import { renderProportionalRun } from "timelines";
+import "timelines/styles";
 
-All examples run standalone in a browser and use synthetic data.
+const timeline = renderProportionalRun(document.querySelector("#timeline"), {
+  data: [
+    { id: "fiction-01", time: "2026-05-04T09:00:00Z", label: "Paper moon sketched" },
+    { id: "fiction-02", time: "2026-05-06T12:00:00Z", label: "Clockwork cloud rehearsed" }
+  ]
+});
 
-- **[Landing page](index.html)** — Polished index with embedded previews and project-relative links
-- **[basic.html](examples/basic.html)** — Proportional UTC axis with a narrow-screen vertical layout
-- **[overview-detail.html](examples/overview-detail.html)** — Pointer/touch pan, two resize handles, keyboard parity, preview, pinned selection, and auto-pan
-- **[semantic-feed.html](examples/semantic-feed.html)** — Non-interactive grouped reading structure with non-color category cues
-- **[keyboard-navigation.html](examples/keyboard-navigation.html)** — Roving focus with arrow keys, Home/End, and explicit Enter/Space selection
-
-## Preserved interaction patterns
-
-- **datetime axis** — navigable time scale with zoom/pan
-- **overview/detail** — coordinated summary and focused views
-- **hover/focus** — reactive visual feedback and keyboard navigation
-- **pinned selection** — persistent selection across exploration
-- **keyboard parity** — all mouse interactions available via keyboard
-- **readable labels** — text and layout that scale with dense timelines
-- **semantic feed** — grouped event presentation where useful
-
-## Shared core
-
-All examples load:
-
-```html
-<link rel="stylesheet" href="../src/timeline/timeline.css">
-<script src="../src/timeline/timeline.js"></script>
-<script src="../src/fixtures/synthetic-events.js"></script>
+timeline.update({ orientation: "vertical" });
+timeline.setSelection("fiction-02");
+console.log(timeline.getState());
+timeline.destroy();
 ```
 
-`TimelineKit` provides range math, proportional positioning, clamped pan and resize, explicit UTC labels, roving focus, selection state, pointer-capture drag, and embed mode. Geometry uses `--tl-*` variables; theme aliases consume the host page's `--cp-*` colors.
+Every renderer returns `{ update, setSelection, getState, destroy }`. Inputs are copied rather than mutated, state survives updates and orientation changes when its IDs remain valid, and `destroy()` removes generated DOM, listeners, and observers.
 
-Run `npm test` for the dependency-free validation suite.
+## Renderers
 
-## Reuse policy
+| Export | Pattern |
+| --- | --- |
+| `renderProportionalRun` | Proportional event run with collision-aware labels |
+| `renderEventRug` | Compact event occurrence marks |
+| `renderVolumeLollipop` | Count/sum/average/custom bucket values |
+| `renderStackedChangePlot` | Bucketed composition by event type |
+| `renderSeriesSwimlanes` | Shared-domain event lanes |
+| `renderLifecycleRanges` | Start/end lifecycle spans |
+| `renderDensityHistogram` | Zero-filled density buckets plus optional rug |
+| `renderCalendarHeatmap` | Daily week-by-day activity |
+| `renderRelativeJourneys` | Series aligned to day zero |
+| `renderAlignedSmallMultiples` | Repeated aligned timelines |
+| `renderOverviewDetail` | Draggable and resizable linked viewport |
+| `renderSemanticFeed` | Native chronological reading pattern |
 
-- Synthetic fixtures only
-- No real names, IDs, payloads, monitor data, quota content, or customer-specific content
-- Example labels and records are clearly fictional and open-source-safe
-- Static assets are documentation only; reusable value lives in the example source
+## Core guarantees
 
-## License
+- UTC day, Monday-based week, month, and custom intervals
+- Zero-filled count, sum, average, and custom aggregation
+- Finite geometry for empty, single, identical, reversed, dense, and capped inputs
+- Marker centers exactly intersect the axis center when `markerAxisOffset` is `0`
+- Configurable marker-axis offset with a connector and an independent `labelGap`
+- Collision-aware label lanes plus per-event placement overrides
+- Preview, focus, and pinned selection remain distinct
+- Pointer, touch, and keyboard parity for interactive renderers
+- Structural `--tl-*` geometry tokens remain separate from `--tl-color-*` theme tokens
+- Synthetic-only fixtures with obviously fictional labels
 
-MIT
+## Documentation
+
+- [Getting started](docs/getting-started.md)
+- [Data model](docs/data-model.md)
+- [API](docs/api.md)
+- [Accessibility](docs/accessibility.md)
+- [Theming](docs/theming.md)
+- [Reuse policy](docs/reuse-policy.md)
+- [Contributing](CONTRIBUTING.md)
+
+Run `npm test` for the dependency-free contract suite. Run `npm run dev` and open `http://localhost:8000/` to browse the live catalog.

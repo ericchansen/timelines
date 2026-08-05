@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Data model · Timeline components</title>
+  <link rel="icon" href="../src/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="../src/timeline.css">
+</head>
+<body>
+  <main class="tl-page">
+    <header class="tl-page-header">
+      <div>
+        <p class="tl-eyebrow"><a href="./index.html">Documentation</a> / Data model</p>
+        <h1>Small records. Honest time.</h1>
+        <p class="tl-lede">Inputs stay immutable while renderers normalize timestamps, domains, and optional presentation fields.</p>
+      </div>
+    </header>
+    <div class="tl-doc-grid">
+      <article class="tl-doc-card">
+        <h2>Discrete events</h2>
+        <p>Use <code>{ id, time, label }</code>. Optional <code>type</code>, <code>series</code>, <code>value</code>, <code>markerAxisOffset</code>, and <code>labelPlacement</code> fields support grouping, aggregation, and deliberate label layout.</p>
+      </article>
+      <article class="tl-doc-card">
+        <h2>Ranges and journeys</h2>
+        <p>Ranges use <code>{ id, start, end, label }</code>. Relative journeys use <code>{ id, day, series, label }</code>, where <code>day</code> is numeric and aligned to day zero.</p>
+      </article>
+      <article class="tl-doc-card">
+        <h2>Timestamp rules</h2>
+        <p>Pass ISO strings, finite epoch milliseconds, or <code>Date</code> values. Reversed domains are normalized. Invalid timestamps throw rather than producing non-finite geometry.</p>
+      </article>
+      <article class="tl-doc-card">
+        <h2>Fixture boundary</h2>
+        <p>Bundled fixtures are obviously fictional demonstrations, not templates for operational records or copied payloads.</p>
+      </article>
+    </div>
+  </main>
+</body>
+</html>

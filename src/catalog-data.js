@@ -1,0 +1,183 @@
+export const catalogGroups = Object.freeze([
+  { id: "events", title: "Events and axes", description: "Place discrete moments on honest proportional scales." },
+  { id: "aggregates", title: "Aggregates and density", description: "Summarize fictional activity without hiding empty time." },
+  { id: "lanes", title: "Lanes and ranges", description: "Compare series, spans, and relative journeys." },
+  { id: "coordinated", title: "Coordinated and semantic", description: "Link overview/detail context or preserve native reading order." }
+]);
+
+export const components = Object.freeze([
+  {
+    id: "proportional-run",
+    exportName: "renderProportionalRun",
+    file: "proportional-run.html",
+    group: "events",
+    title: "Proportional run timeline",
+    summary: "Discrete events spaced by elapsed UTC time with collision-aware labels.",
+    use: "Use for a small sequence where event timing and labels both matter.",
+    dataShape: "{ id, time, label, type?, series?, markerAxisOffset?, labelPlacement? }",
+    options: "orientation, domain, interval, markerAxisOffset, labelGap, maxLabelLanes",
+    supportsOrientation: true,
+    interval: "week"
+  },
+  {
+    id: "event-rug",
+    exportName: "renderEventRug",
+    file: "event-rug.html",
+    group: "events",
+    title: "Event rug",
+    summary: "Compact temporal marks for showing concentration without encoding magnitude.",
+    use: "Use below another chart or alone when exact event occurrence is the message.",
+    dataShape: "{ id, time, label }",
+    options: "orientation, domain, interval, markerAxisOffset, labelGap",
+    supportsOrientation: true,
+    interval: "week"
+  },
+  {
+    id: "volume-lollipop",
+    exportName: "renderVolumeLollipop",
+    file: "volume-lollipop.html",
+    group: "aggregates",
+    title: "Volume lollipop",
+    summary: "Temporal buckets rendered as stems and heads, including empty intervals.",
+    use: "Use when values need more emphasis than bars provide but baseline comparison still matters.",
+    dataShape: "{ id, time, value, label }",
+    options: "interval: day | week | month | custom, reducer: count | sum | average | function",
+    supportsOrientation: true,
+    supportsInterval: true,
+    supportsReducer: true,
+    interval: "week"
+  },
+  {
+    id: "stacked-change-plot",
+    exportName: "renderStackedChangePlot",
+    file: "stacked-change-plot.html",
+    group: "aggregates",
+    title: "Stacked change plot",
+    summary: "Counts fictional change types in calendar-aligned temporal buckets.",
+    use: "Use to compare total activity and composition by type.",
+    dataShape: "{ id, time, type, label }",
+    options: "domain, interval: day | week | month",
+    supportsInterval: true,
+    interval: "week"
+  },
+  {
+    id: "series-swimlanes",
+    exportName: "renderSeriesSwimlanes",
+    file: "series-swimlanes.html",
+    group: "lanes",
+    title: "Series swimlanes",
+    summary: "One proportional lane per fictional series with shared time alignment.",
+    use: "Use when sequence within a series and comparison across series are equally important.",
+    dataShape: "{ id, time, series, label }",
+    options: "orientation, domain, markerAxisOffset",
+    supportsOrientation: true,
+    interval: "week"
+  },
+  {
+    id: "lifecycle-ranges",
+    exportName: "renderLifecycleRanges",
+    file: "lifecycle-ranges.html",
+    group: "lanes",
+    title: "Lifecycle ranges",
+    summary: "Start/end spans with preserved duration and optional vertical orientation.",
+    use: "Use for phases, lifecycles, or intervals rather than instantaneous events.",
+    dataShape: "{ id, start, end, label, series? }",
+    options: "orientation, domain",
+    supportsOrientation: true,
+    dataKind: "ranges"
+  },
+  {
+    id: "density-histogram",
+    exportName: "renderDensityHistogram",
+    file: "density-histogram.html",
+    group: "aggregates",
+    title: "Time-bucket density histogram",
+    summary: "Zero-filled buckets with count, sum, average, or custom aggregation and an optional rug.",
+    use: "Use for density over calendar time when empty periods must remain visible.",
+    dataShape: "{ id, time, value?, label }",
+    options: "interval, reducer, value accessor, showEventRug",
+    supportsOrientation: true,
+    supportsInterval: true,
+    supportsReducer: true,
+    interval: "week"
+  },
+  {
+    id: "calendar-heatmap",
+    exportName: "renderCalendarHeatmap",
+    file: "calendar-heatmap.html",
+    group: "aggregates",
+    title: "Calendar heatmap",
+    summary: "Daily fictional activity encoded on a familiar week-by-day grid.",
+    use: "Use for long-running daily patterns where weekday rhythm matters.",
+    dataShape: "{ id, time, value?, label }",
+    options: "domain, reducer",
+    interval: "day"
+  },
+  {
+    id: "relative-journeys",
+    exportName: "renderRelativeJourneys",
+    file: "relative-journeys.html",
+    group: "lanes",
+    title: "Relative journeys",
+    summary: "Multiple fictional journeys aligned to day zero instead of calendar time.",
+    use: "Use to compare progression after a common starting moment.",
+    dataShape: "{ id, day, series, label }",
+    options: "selectedId",
+    dataKind: "journeys"
+  },
+  {
+    id: "aligned-small-multiples",
+    exportName: "renderAlignedSmallMultiples",
+    file: "aligned-small-multiples.html",
+    group: "lanes",
+    title: "Aligned small multiples",
+    summary: "Repeated compact timelines sharing one domain for disciplined comparison.",
+    use: "Use when each series needs its own visual row without losing temporal alignment.",
+    dataShape: "{ id, time, series, label }",
+    options: "orientation, domain",
+    supportsOrientation: true,
+    interval: "week"
+  },
+  {
+    id: "overview-detail",
+    exportName: "renderOverviewDetail",
+    file: "overview-detail.html",
+    group: "coordinated",
+    title: "Linked overview and detail",
+    summary: "A draggable, resizable viewport links full-range context to a focused detail scale.",
+    use: "Use for dense or long timelines that need navigation without losing context.",
+    dataShape: "{ id, time, label, value? }",
+    options: "visibleRange, minimumDuration, showDensityTrack, densityInterval, onRangeChange",
+    commands: [
+      "Drag the viewport to pan the detail range",
+      "Drag either handle to resize the range",
+      "Left and Right Arrow pan or resize the focused control",
+      "Home and End move the viewport to a boundary"
+    ],
+    interval: "week"
+  },
+  {
+    id: "semantic-feed",
+    exportName: "renderSemanticFeed",
+    file: "semantic-feed.html",
+    group: "coordinated",
+    title: "Semantic chronological feed",
+    summary: "A native ordered reading pattern with exact marker/spine alignment in two orientations.",
+    use: "Use when comprehension and document order matter more than direct manipulation.",
+    dataShape: "{ id, time, label, type?, series? }",
+    options: "orientation",
+    supportsOrientation: true,
+    commands: [
+      "Use normal browser reading and link traversal",
+      "No listbox or arrow-key behavior is added to this semantic pattern",
+      "Use the orientation control to switch between vertical and horizontal reading"
+    ]
+  }
+]);
+
+export const defaultCommands = Object.freeze([
+  "Arrow keys move focus along time",
+  "Home and End move to the first or last item",
+  "Enter or Space pins the focused item",
+  "Escape clears the pinned item"
+]);
