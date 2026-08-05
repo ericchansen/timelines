@@ -1,8 +1,28 @@
 {
   "name": "timelines",
   "version": "0.1.0",
-  "description": "Reusable timeline examples and components with synthetic data",
-  "main": "src/timeline/timeline.js",
+  "description": "Framework-agnostic timeline renderers with calendar-aware aggregation and accessible interactions",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "import": "./src/index.js"
+    },
+    "./styles": "./src/timeline.css",
+    "./fixtures": "./src/fixtures/synthetic-data.js"
+  },
+  "files": [
+    "src",
+    "docs",
+    "CONTRIBUTING.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": [
+    "./src/timeline.css"
+  ],
   "license": "MIT",
   "author": "Eric Hansen",
   "repository": {
@@ -11,7 +31,7 @@
   },
   "scripts": {
     "dev": "python -m http.server 8000",
-    "test": "node tests/run-tests.js"
+    "test": "node tests/run-tests.mjs"
   },
   "keywords": [
     "timeline",

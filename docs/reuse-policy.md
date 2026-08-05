@@ -1,23 +1,13 @@
-# Synthetic-only reuse policy
+# Reuse policy
 
-The browser-readable policy is available at [`docs/reuse-policy.html`](reuse-policy.html).
+## Synthetic-only catalog
 
-This public repository contains only synthetic, fictional data.
+All repository fixtures and screenshots must remain obviously fictional. Do not add customer names, account names, quota language, local-monitor language, real identifiers, copied payloads, credentials, or operational records.
 
-## Allowed
+## Reuse boundary
 
-- Reusable timeline source code
-- Obviously fictional event fixtures
-- Interaction and accessibility documentation
-- Documentation-only static assets
+Copy the package exports and CSS, then map host data into the documented model. Keep domain-specific labels, privacy rules, and authorization behavior outside this repository.
 
-## Prohibited
+## Interaction contract
 
-- Real customer names, account IDs, or proprietary data
-- Production monitor payloads, telemetry, or quota content
-- Internal deployment or operational information
-- Any data copied from private systems
-
-## Fixture guidelines
-
-Use simple IDs such as `evt-001`, neutral fictional labels, and clearly demo-grade timestamps. If data may be real, replace it before publication.
+Do not remove keyboard parity, visible focus, pointer capture, empty-state behavior, exact marker/axis alignment, or teardown when adapting a renderer.
