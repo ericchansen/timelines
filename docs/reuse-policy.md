@@ -1,31 +1,23 @@
-# Reuse policy
+# Synthetic-only reuse policy
 
-## Synthetic-only commitment
+The browser-readable policy is available at [`docs/reuse-policy.html`](reuse-policy.html).
 
-This repository contains **only synthetic, fictional data**. All examples use fake names, IDs, timestamps, event payloads, and labels that are obviously not real production data.
+This public repository contains only synthetic, fictional data.
 
-## What belongs in this repo
+## Allowed
 
-- Example source code for timeline interactions
-- Synthetic event fixtures with clearly fictional labels
-- Documentation of interaction patterns and behaviors
-- Static assets (screenshots, diagrams) for documentation only
+- Reusable timeline source code
+- Obviously fictional event fixtures
+- Interaction and accessibility documentation
+- Documentation-only static assets
 
-## What does NOT belong here
+## Prohibited
 
 - Real customer names, account IDs, or proprietary data
-- Production monitor payloads or raw telemetry
-- Quota-specific content or infrastructure details
+- Production monitor payloads, telemetry, or quota content
 - Internal deployment or operational information
-- Any data from private/customer systems
+- Any data copied from private systems
 
-## Synthetic fixture guidelines
+## Fixture guidelines
 
-- Use domain-neutral or obviously fictional names: `Demo Cluster A`, `release-0007`, `asset-alpha`, `service-test`
-- Timestamps should be clearly demo-grade: `2026-01-15T10:00:00Z`, `2025-12-01T14:30:00Z`
-- Event labels should read as fictional: `Simulation completed`, `Demo event`, `Test incident`
-- Record IDs can be simple: `evt-001`, `svc-demo-1`, `asset-synthetic-a`
-
-## Publishing
-
-This repository is **intended to be public and reusable**. Every file added should be appropriate for open-source distribution and understandable without private/internal context.
+Use simple IDs such as `evt-001`, neutral fictional labels, and clearly demo-grade timestamps. If data may be real, replace it before publication.

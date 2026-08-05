@@ -3,100 +3,136 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Basic Timeline Example</title>
+  <meta name="description" content="A proportional, responsive timeline rendered from synthetic UTC event data.">
+  <title>Basic proportional timeline</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f5f5f5;
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
     }
-    .container {
-      max-width: 1200px;
-      margin: 0 auto;
-      background: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-    h1 {
-      margin-top: 0;
-      color: #333;
-    }
-    .timeline {
-      display: flex;
-      align-items: center;
-      margin-top: 40px;
-      position: relative;
-    }
-    .timeline::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      right: 0;
-      height: 2px;
-      background: #e0e0e0;
-      top: 50%;
-    }
-    .event {
-      position: relative;
-      flex: 1;
-      text-align: center;
-      padding: 20px;
-    }
-    .event-dot {
-      width: 12px;
-      height: 12px;
-      background: #007aff;
-      border: 3px solid white;
-      border-radius: 50%;
-      margin: 0 auto 10px;
-      position: relative;
-      z-index: 1;
-      box-shadow: 0 0 0 3px #e0e0e0;
-    }
-    .event-label {
-      font-size: 14px;
-      color: #666;
-      margin-top: 8px;
-    }
-    .event:hover .event-dot {
-      background: #0066cc;
-      box-shadow: 0 0 0 3px #007aff, 0 2px 8px rgba(0,122,255,0.3);
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
     }
   </style>
+  <link rel="stylesheet" href="../src/timeline/timeline.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Basic Timeline Example</h1>
-    <p>A simple synthetic timeline with four demo events. Hover over the dots to see focus feedback.</p>
+  <main class="tl-page">
+    <div class="tl-shell">
+      <header class="tl-page-header">
+        <h1>Basic proportional timeline</h1>
+        <p>Event spacing reflects elapsed time, not array order. The layout becomes a readable vertical sequence on narrow screens.</p>
+      </header>
 
-    <div class="timeline">
-      <div class="event">
-        <div class="event-dot"></div>
-        <div class="event-label">Deployment started</div>
-        <div style="font-size: 12px; color: #999;">10:00 AM</div>
-      </div>
-      <div class="event">
-        <div class="event-dot"></div>
-        <div class="event-label">Configuration applied</div>
-        <div style="font-size: 12px; color: #999;">10:15 AM</div>
-      </div>
-      <div class="event">
-        <div class="event-dot"></div>
-        <div class="event-label">Health check passed</div>
-        <div style="font-size: 12px; color: #999;">10:30 AM</div>
-      </div>
-      <div class="event">
-        <div class="event-dot"></div>
-        <div class="event-label">Deployment completed</div>
-        <div style="font-size: 12px; color: #999;">11:00 AM</div>
-      </div>
+      <section class="tl-panel" aria-labelledby="axis-title">
+        <div class="tl-panel-header">
+          <h2 id="axis-title">Synthetic launch sequence</h2>
+          <p>15 January 2026 · UTC</p>
+        </div>
+        <div class="tl-axis-plot" id="axis" data-responsive="vertical">
+          <div class="tl-axis-line" aria-hidden="true"></div>
+        </div>
+        <div class="tl-axis-bounds" data-responsive="vertical" aria-hidden="true">
+          <span id="start-bound"></span>
+          <span id="end-bound"></span>
+        </div>
+        <p class="tl-help">Each marker is positioned from its timestamp within the full range. Tab to a marker for its complete accessible label.</p>
+      </section>
     </div>
+  </main>
 
-    <p style="margin-top: 40px; font-size: 12px; color: #999;">
-      All data is synthetic and fictional. This example demonstrates basic timeline layout and hover interactions.
-    </p>
-  </div>
+  <script src="../src/timeline/timeline.js"></script>
+  <script src="../src/fixtures/synthetic-events.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const events = window.SYNTHETIC_TIMELINE_EVENTS;
+      const timeline = window.TimelineKit;
+      const bounds = ["2026-01-15T09:45:00Z", "2026-01-15T11:30:00Z"];
+      const axis = document.getElementById("axis");
+
+      events.forEach((event, index) => {
+        const wrapper = document.createElement("div");
+        const marker = document.createElement("button");
+        const label = document.createElement("span");
+        const labelLane = index % 2;
+
+        wrapper.className = "tl-axis-event";
+        timeline.setTimePosition(wrapper, event.timestamp, bounds);
+
+        marker.className = "tl-axis-marker";
+        marker.type = "button";
+        marker.setAttribute(
+          "aria-label",
+          `${event.label}, ${timeline.formatUtc(event.timestamp, { seconds: true })}, ${event.category}`
+        );
+
+        label.className = "tl-axis-label";
+        label.dataset.lane = String(labelLane);
+        label.innerHTML = `<strong>${event.label}</strong><span>${timeline.formatUtc(event.timestamp, { seconds: true })}</span>`;
+
+        wrapper.append(marker, label);
+        axis.append(wrapper);
+      });
+
+      document.getElementById("start-bound").textContent = timeline.formatUtc(bounds[0]);
+      document.getElementById("end-bound").textContent = timeline.formatUtc(bounds[1]);
+      timeline.applyEmbedMode();
+    })();
+  </script>
 </body>
 </html>

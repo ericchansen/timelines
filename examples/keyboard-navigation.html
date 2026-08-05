@@ -3,319 +3,144 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timeline: Keyboard Navigation Pattern</title>
+  <meta name="description" content="A keyboard-navigable synthetic timeline with independent focus and selection.">
+  <title>Keyboard timeline navigation</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f5f5f5;
-      padding: 20px;
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
     }
-    .container { max-width: 700px; margin: 0 auto; }
-    h1 {
-      font-size: 20px;
-      margin-bottom: 8px;
-      color: #333;
-    }
-    .subtitle {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-
-    .panel {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .panel-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #666;
-    }
-
-    /* Timeline list */
-    .timeline-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .timeline-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 12px;
-      border-radius: 6px;
-      background: #fafafa;
-      border: 2px solid transparent;
-      cursor: pointer;
-      transition: all 150ms ease;
-      outline: none;
-    }
-
-    .timeline-item:hover {
-      background: #f0f0f0;
-      border-color: #0066cc;
-    }
-
-    .timeline-item:focus {
-      border-color: #0066cc;
-      background: #e8f3ff;
-      box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
-    }
-
-    .timeline-item.active {
-      background: #e8f3ff;
-      border-color: #ff6b35;
-    }
-
-    .timeline-item.active:focus {
-      box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
-    }
-
-    .item-dot {
-      flex-shrink: 0;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #0066cc;
-    }
-
-    .timeline-item.active .item-dot {
-      background: #ff6b35;
-    }
-
-    .item-content {
-      flex: 1;
-    }
-
-    .item-time {
-      font-size: 12px;
-      color: #999;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .item-label {
-      font-size: 15px;
-      font-weight: 500;
-      color: #333;
-    }
-
-    .item-category {
-      display: inline-block;
-      font-size: 11px;
-      padding: 2px 6px;
-      margin-top: 4px;
-      border-radius: 2px;
-      background: #e0e7ff;
-      color: #4c51bf;
-    }
-
-    /* Status and hints */
-    .status-bar {
-      background: #f9f9f9;
-      border: 1px solid #e0e0e0;
-      border-radius: 6px;
-      padding: 12px;
-      margin-top: 16px;
-      font-size: 13px;
-      color: #666;
-    }
-
-    .status-value {
-      font-weight: 600;
-      color: #333;
-    }
-
-    .keyboard-hints {
-      background: #f0f8ff;
-      border-left: 3px solid #0066cc;
-      border-radius: 4px;
-      padding: 12px;
-      margin-top: 16px;
-      font-size: 13px;
-      color: #555;
-    }
-
-    .keyboard-hints strong {
-      color: #0066cc;
-      display: block;
-      margin-bottom: 8px;
-    }
-
-    .hint-row {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 6px;
-    }
-
-    .hint-key {
-      min-width: 100px;
-      font-family: 'Courier New', monospace;
-      font-weight: 500;
-      color: #0066cc;
-    }
-
-    .hint-desc {
-      flex: 1;
-      color: #666;
-    }
-
-    .hint-row:last-child {
-      margin-bottom: 0;
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
     }
   </style>
+  <link rel="stylesheet" href="../src/timeline/timeline.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Timeline: Keyboard Navigation Pattern</h1>
-    <p class="subtitle">Full keyboard navigation, focus management, and arrow key parity • Synthetic data example</p>
+  <main class="tl-page">
+    <div class="tl-shell tl-shell--reading">
+      <header class="tl-page-header">
+        <h1>Keyboard timeline navigation</h1>
+        <p>Arrow keys move focus; Enter or Space pins a selection. Focus and selection stay independent so exploration never changes state unexpectedly.</p>
+      </header>
 
-    <div class="panel">
-      <div class="panel-title">Events (Use Arrow Keys)</div>
-      <div class="timeline-list" id="timeline" role="listbox">
-        <!-- Items populated by JS -->
-      </div>
-
-      <div class="status-bar">
-        <div>Selected: <span class="status-value" id="selectedLabel">None</span></div>
-        <div style="margin-top: 6px;">Focus Index: <span class="status-value" id="focusIndex">—</span></div>
-      </div>
-
-      <div class="keyboard-hints">
-        <strong>⌨️ Keyboard Controls</strong>
-        <div class="hint-row">
-          <div class="hint-key">↑ / ↓</div>
-          <div class="hint-desc">Navigate between events</div>
+      <section class="tl-panel" aria-labelledby="events-title">
+        <div class="tl-panel-header">
+          <h2 id="events-title">Synthetic events</h2>
+          <p id="instructions">Use Up/Down, Home/End, Enter, and Space.</p>
         </div>
-        <div class="hint-row">
-          <div class="hint-key">Home / End</div>
-          <div class="hint-desc">Jump to first / last event</div>
+        <div class="tl-listbox" id="timeline" role="listbox" aria-describedby="instructions"></div>
+        <div class="tl-status">
+          <span><strong>Focused:</strong> <span id="focused-label">None</span></span>
+          <span><strong>Pinned:</strong> <span id="selected-label">None</span></span>
         </div>
-        <div class="hint-row">
-          <div class="hint-key">Enter / Space</div>
-          <div class="hint-desc">Select focused event</div>
-        </div>
-        <div class="hint-row">
-          <div class="hint-key">Tab</div>
-          <div class="hint-desc">Move focus into / out of timeline</div>
-        </div>
-      </div>
+        <div class="tl-live" id="live-status" role="status" aria-live="polite"></div>
+      </section>
     </div>
-  </div>
+  </main>
 
+  <script src="../src/timeline/timeline.js"></script>
+  <script src="../src/fixtures/synthetic-events.js"></script>
   <script>
-    // Synthetic event data
-    const events = [
-      {
-        id: 'evt-001',
-        timestamp: '2026-01-15T10:00:00Z',
-        label: 'Cluster Init',
-        category: 'deployment'
-      },
-      {
-        id: 'evt-002',
-        timestamp: '2026-01-15T10:15:30Z',
-        label: 'Health Check',
-        category: 'monitoring'
-      },
-      {
-        id: 'evt-003',
-        timestamp: '2026-01-15T10:45:00Z',
-        label: 'Config Applied',
-        category: 'deployment'
-      },
-      {
-        id: 'evt-004',
-        timestamp: '2026-01-15T11:20:15Z',
-        label: 'Ready',
-        category: 'deployment'
-      }
-    ];
+    (() => {
+      "use strict";
 
-    let focusIndex = 0;
-    let selectedEventId = null;
+      const timeline = window.TimelineKit;
+      const events = window.SYNTHETIC_TIMELINE_EVENTS;
+      const listbox = document.getElementById("timeline");
+      let selectedId = null;
 
-    function formatTime(isoString) {
-      const dt = new Date(isoString);
-      return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    }
-
-    function updateSelection(newIndex) {
-      focusIndex = Math.max(0, Math.min(newIndex, events.length - 1));
-      selectedEventId = events[focusIndex].id;
-      render();
-    }
-
-    function handleKeyDown(e) {
-      switch (e.key) {
-        case 'ArrowUp':
-          e.preventDefault();
-          updateSelection(focusIndex - 1);
-          break;
-        case 'ArrowDown':
-          e.preventDefault();
-          updateSelection(focusIndex + 1);
-          break;
-        case 'Home':
-          e.preventDefault();
-          updateSelection(0);
-          break;
-        case 'End':
-          e.preventDefault();
-          updateSelection(events.length - 1);
-          break;
-        case 'Enter':
-        case ' ':
-          e.preventDefault();
-          // Already selected via focus
-          break;
-      }
-    }
-
-    function render() {
-      const timeline = document.getElementById('timeline');
-      timeline.innerHTML = '';
-
-      events.forEach((event, index) => {
-        const item = document.createElement('div');
-        item.className = 'timeline-item' + (index === focusIndex ? ' active' : '');
-        item.tabIndex = index === focusIndex ? 0 : -1;
-        item.role = 'option';
-        item.aria-selected = index === focusIndex;
+      events.forEach((event) => {
+        const item = document.createElement("div");
+        item.className = "tl-listbox-item";
+        item.dataset.eventId = event.id;
+        item.dataset.selected = "false";
+        item.setAttribute("role", "option");
+        item.setAttribute("aria-selected", "false");
         item.innerHTML = `
-          <div class="item-dot"></div>
-          <div class="item-content">
-            <div class="item-time">${formatTime(event.timestamp)}</div>
-            <div class="item-label">${event.label}</div>
-            <div class="item-category">${event.category}</div>
-          </div>
+          <span class="tl-listbox-marker" aria-hidden="true"></span>
+          <span class="tl-listbox-copy">
+            <strong>${event.label}</strong>
+            <span class="tl-badge tl-badge--${event.category}">${event.category}</span>
+          </span>
+          <time class="tl-time" datetime="${event.timestamp}">${timeline.formatUtc(event.timestamp, { seconds: true })}</time>
         `;
-        item.addEventListener('click', () => updateSelection(index));
-        item.addEventListener('keydown', handleKeyDown);
-        timeline.appendChild(item);
+        listbox.append(item);
       });
 
-      // Update status
-      document.getElementById('selectedLabel').textContent = events[focusIndex].label;
-      document.getElementById('focusIndex').textContent = focusIndex;
+      const items = Array.from(listbox.children);
 
-      // Restore focus
-      const focusedItem = timeline.querySelector('[aria-selected="true"]');
-      if (focusedItem) {
-        focusedItem.focus();
+      function pin(index) {
+        const event = events[index];
+        selectedId = event.id;
+        timeline.applySelectionState(items, selectedId);
+        document.getElementById("selected-label").textContent = event.label;
+        document.getElementById("live-status").textContent = `${event.label} pinned.`;
       }
-    }
 
-    // Initial render (focus first item)
-    render();
+      timeline.createRovingFocus(items, {
+        orientation: "vertical",
+        onFocus(index) {
+          document.getElementById("focused-label").textContent = events[index].label;
+        },
+        onSelect: pin
+      });
+
+      timeline.applyEmbedMode();
+    })();
   </script>
 </body>
 </html>

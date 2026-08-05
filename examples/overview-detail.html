@@ -3,326 +3,395 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timeline: Overview + Detail Pattern</title>
+  <meta name="description" content="A coordinated overview and detail timeline with pointer, touch, and keyboard viewport controls.">
+  <title>Overview and detail timeline</title>
+  <script>
+    (() => {
+      const param = new URLSearchParams(window.location.search).get("scoutTheme");
+      const theme =
+        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #f5f5f5;
-      padding: 20px;
+    :root {
+      color-scheme: light;
+      --cp-bg: #f7f4ef;
+      --cp-bg-elevated: #fcfbf8;
+      --cp-surface: #ffffff;
+      --cp-surface-soft: #f5f5f5;
+      --cp-border: #dedede;
+      --cp-border-strong: #919191;
+      --cp-text: #242424;
+      --cp-text-muted: #5c5c5c;
+      --cp-text-soft: #6f6f6f;
+      --cp-accent: #b11f4b;
+      --cp-accent-hover: #9a1a41;
+      --cp-accent-soft: rgba(177, 31, 75, 0.08);
+      --cp-accent-fg: #ffffff;
+      --cp-success: #16a34a;
+      --cp-danger: #dc2626;
+      --cp-warning: #f59e0b;
+      --cp-link: #0078d4;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.12);
+      --cp-overlay: rgba(255, 255, 255, 0.8);
+      --cp-panel: rgba(255, 255, 255, 0.86);
+      --cp-panel-strong: rgba(255, 255, 255, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.55);
+      --cp-highlight: rgba(177, 31, 75, 0.12);
     }
-    .container { max-width: 900px; margin: 0 auto; }
-    h1 {
-      font-size: 20px;
-      margin-bottom: 8px;
-      color: #333;
-    }
-    .subtitle {
-      color: #666;
-      font-size: 14px;
-      margin-bottom: 20px;
-    }
-
-    .panel {
-      background: white;
-      border-radius: 8px;
-      padding: 20px;
-      margin-bottom: 16px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .panel-title {
-      font-size: 14px;
-      font-weight: 600;
-      margin-bottom: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: #666;
-    }
-
-    /* Overview timeline (compact) */
-    .overview-timeline {
-      display: flex;
-      position: relative;
-      height: 60px;
-      background: #f9f9f9;
-      border-radius: 4px;
-      padding: 0 12px;
-      align-items: center;
-    }
-
-    .overview-event {
-      position: absolute;
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #0066cc;
-      cursor: pointer;
-      transition: all 200ms ease;
-    }
-
-    .overview-event:hover {
-      width: 12px;
-      height: 12px;
-      background: #0052a3;
-      box-shadow: 0 0 8px rgba(0, 102, 204, 0.4);
-    }
-
-    .overview-event.selected {
-      width: 12px;
-      height: 12px;
-      background: #ff6b35;
-      box-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
-    }
-
-    /* Zoom window (visual indicator) */
-    .zoom-window {
-      position: absolute;
-      height: 100%;
-      border: 2px solid #0066cc;
-      background: rgba(0, 102, 204, 0.1);
-      border-radius: 2px;
-      pointer-events: none;
-    }
-
-    /* Detail timeline (expanded view) */
-    .detail-timeline {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-      margin-top: 16px;
-    }
-
-    .detail-event {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      padding: 12px;
-      border-left: 3px solid #e0e0e0;
-      border-radius: 4px;
-      background: #fafafa;
-      cursor: pointer;
-      transition: all 150ms ease;
-    }
-
-    .detail-event:hover {
-      background: #f0f0f0;
-      border-left-color: #0066cc;
-    }
-
-    .detail-event.active {
-      background: #e8f3ff;
-      border-left-color: #ff6b35;
-    }
-
-    .event-dot {
-      flex-shrink: 0;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #0066cc;
-      margin-top: 4px;
-    }
-
-    .detail-event.active .event-dot {
-      background: #ff6b35;
-      box-shadow: 0 0 8px rgba(255, 107, 53, 0.4);
-    }
-
-    .event-content {
-      flex: 1;
-    }
-
-    .event-time {
-      font-size: 12px;
-      color: #999;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .event-label {
-      font-size: 15px;
-      font-weight: 500;
-      color: #333;
-      margin: 4px 0;
-    }
-
-    .event-category {
-      display: inline-block;
-      font-size: 11px;
-      padding: 2px 8px;
-      border-radius: 2px;
-      background: #e0e7ff;
-      color: #4c51bf;
-      font-weight: 500;
-    }
-
-    .event-description {
-      font-size: 13px;
-      color: #666;
-      margin-top: 6px;
-      line-height: 1.4;
-    }
-
-    /* Sync indicator */
-    .sync-info {
-      font-size: 12px;
-      color: #999;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #e0e0e0;
-    }
-
-    .sync-info strong {
-      color: #666;
-    }
-
-    /* Keyboard hint */
-    .hint {
-      font-size: 12px;
-      color: #999;
-      margin-top: 16px;
-      font-style: italic;
+    html[data-theme="dark"] {
+      color-scheme: dark;
+      --cp-bg: #3d3b3a;
+      --cp-bg-elevated: #343231;
+      --cp-surface: #292929;
+      --cp-surface-soft: #2e2e2e;
+      --cp-border: #474747;
+      --cp-border-strong: #5f5f5f;
+      --cp-text: #dedede;
+      --cp-text-muted: #919191;
+      --cp-text-soft: #b0b0b0;
+      --cp-accent: #fd8ea1;
+      --cp-accent-hover: #fb7b91;
+      --cp-accent-soft: rgba(253, 142, 161, 0.14);
+      --cp-accent-fg: #1a1a1a;
+      --cp-success: #4ade80;
+      --cp-danger: #f87171;
+      --cp-warning: #fbbf24;
+      --cp-link: #4da6ff;
+      --cp-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
+      --cp-overlay: rgba(41, 41, 41, 0.88);
+      --cp-panel: rgba(41, 41, 41, 0.72);
+      --cp-panel-strong: rgba(41, 41, 41, 0.96);
+      --cp-sheen: rgba(255, 255, 255, 0.04);
+      --cp-highlight: rgba(253, 142, 161, 0.12);
     }
   </style>
+  <link rel="stylesheet" href="../src/timeline/timeline.css">
 </head>
 <body>
-  <div class="container">
-    <h1>Timeline: Overview + Detail Pattern</h1>
-    <p class="subtitle">Coordinated zoom and pan across two time scales • Synthetic data example</p>
+  <main class="tl-page">
+    <div class="tl-shell">
+      <header class="tl-page-header">
+        <h1>Overview and detail</h1>
+        <p>Drag the viewport to pan or drag either edge to zoom. Every control also works with a keyboard, and pinning an event brings it into view.</p>
+      </header>
 
-    <div class="panel">
-      <div class="panel-title">Overview (Full Range)</div>
-      <div class="overview-timeline" id="overview">
-        <div class="zoom-window" id="zoomWindow"></div>
-        <!-- Event dots populated by JS -->
-      </div>
-      <p class="hint">Overview shows all events; blue highlight shows detail view zoom window</p>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title">Detail (Zoomed View)</div>
-      <div class="detail-timeline" id="detail">
-        <!-- Detail events populated by JS -->
-      </div>
-      <div class="sync-info">
-        <strong>Selected:</strong> <span id="selectedLabel">None</span>
-      </div>
-      <p class="hint">Click an event to select it; hover for preview</p>
-    </div>
-  </div>
-
-  <script>
-    // Synthetic event data (matches synthetic-events.json structure)
-    const events = [
-      {
-        id: 'evt-001',
-        timestamp: '2026-01-15T10:00:00Z',
-        label: 'Cluster Init',
-        category: 'deployment',
-        description: 'Demo Cluster A initialization started'
-      },
-      {
-        id: 'evt-002',
-        timestamp: '2026-01-15T10:15:30Z',
-        label: 'Health Check',
-        category: 'monitoring',
-        description: 'Initial health check: all nodes responding'
-      },
-      {
-        id: 'evt-003',
-        timestamp: '2026-01-15T10:45:00Z',
-        label: 'Config Applied',
-        category: 'deployment',
-        description: 'Cluster configuration applied successfully'
-      },
-      {
-        id: 'evt-004',
-        timestamp: '2026-01-15T11:20:15Z',
-        label: 'Ready',
-        category: 'deployment',
-        description: 'Demo Cluster A now ready for use'
-      }
-    ];
-
-    let selectedEventId = null;
-    const timeRange = [new Date('2026-01-15T09:00:00Z'), new Date('2026-01-15T12:00:00Z')];
-    const detailZoom = [new Date('2026-01-15T10:00:00Z'), new Date('2026-01-15T11:30:00Z')];
-
-    function getPosition(date) {
-      const range = timeRange[1] - timeRange[0];
-      const pos = (date - timeRange[0]) / range;
-      return Math.max(0, Math.min(1, pos));
-    }
-
-    function formatTime(isoString) {
-      const dt = new Date(isoString);
-      return dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    }
-
-    function renderOverview() {
-      const overview = document.getElementById('overview');
-      overview.innerHTML = '<div class="zoom-window" id="zoomWindow"></div>';
-
-      // Add event dots
-      events.forEach(event => {
-        const dot = document.createElement('div');
-        dot.className = 'overview-event' + (event.id === selectedEventId ? ' selected' : '');
-        const pos = getPosition(new Date(event.timestamp));
-        dot.style.left = (pos * 100) + '%';
-        dot.title = event.label;
-        dot.addEventListener('click', () => selectEvent(event.id));
-        overview.appendChild(dot);
-      });
-
-      // Update zoom window position
-      const zoomStart = getPosition(detailZoom[0]);
-      const zoomEnd = getPosition(detailZoom[1]);
-      const zoomWindow = document.getElementById('zoomWindow');
-      zoomWindow.style.left = (zoomStart * 100) + '%';
-      zoomWindow.style.width = ((zoomEnd - zoomStart) * 100) + '%';
-    }
-
-    function renderDetail() {
-      const detail = document.getElementById('detail');
-      detail.innerHTML = '';
-
-      // Filter to detail range
-      const filtered = events.filter(e => {
-        const date = new Date(e.timestamp);
-        return date >= detailZoom[0] && date <= detailZoom[1];
-      });
-
-      filtered.forEach(event => {
-        const elem = document.createElement('div');
-        elem.className = 'detail-event' + (event.id === selectedEventId ? ' active' : '');
-        elem.innerHTML = `
-          <div class="event-dot"></div>
-          <div class="event-content">
-            <div class="event-time">${formatTime(event.timestamp)}</div>
-            <div class="event-label">${event.label}</div>
-            <span class="event-category">${event.category}</span>
-            <div class="event-description">${event.description}</div>
+      <section class="tl-panel" aria-labelledby="overview-title">
+        <div class="tl-panel-header">
+          <h2 id="overview-title">Full range</h2>
+          <p>Pointer, pen, touch, and keyboard</p>
+        </div>
+        <div class="tl-range-readout">
+          <span>Visible detail range</span>
+          <output id="range-output" for="viewport"></output>
+        </div>
+        <div class="tl-overview-track" id="overview">
+          <div
+            class="tl-viewport"
+            id="viewport"
+            tabindex="0"
+            role="group"
+            aria-label="Visible detail range. Use Left and Right Arrow keys to pan."
+          >
+            <span class="tl-viewport-grip" aria-hidden="true"></span>
+            <button
+              class="tl-viewport-handle tl-viewport-handle--start"
+              id="start-handle"
+              type="button"
+              role="slider"
+              aria-label="Detail range start"
+              aria-orientation="horizontal"
+            ></button>
+            <button
+              class="tl-viewport-handle tl-viewport-handle--end"
+              id="end-handle"
+              type="button"
+              role="slider"
+              aria-label="Detail range end"
+              aria-orientation="horizontal"
+            ></button>
           </div>
-        `;
-        elem.addEventListener('click', () => selectEvent(event.id));
-        detail.appendChild(elem);
+        </div>
+        <p class="tl-help">Viewport: Left/Right pans; Home/End moves to the bounds. Handles: Left/Right resizes; Home/End moves that edge. Hold Shift for one-minute steps.</p>
+      </section>
+
+      <section class="tl-panel" aria-labelledby="detail-title">
+        <div class="tl-panel-header">
+          <h2 id="detail-title">Events in range</h2>
+          <p>Hover or focus to preview; click, Enter, or Space to pin.</p>
+        </div>
+        <div class="tl-event-list" id="detail" role="listbox" aria-label="Events in visible range"></div>
+        <div class="tl-status">
+          <span><strong>Preview:</strong> <span id="preview-label">None</span></span>
+          <span><strong>Pinned:</strong> <span id="selected-label">None</span></span>
+        </div>
+        <div class="tl-live" id="live-status" role="status" aria-live="polite"></div>
+      </section>
+    </div>
+  </main>
+
+  <script src="../src/timeline/timeline.js"></script>
+  <script src="../src/fixtures/synthetic-events.js"></script>
+  <script>
+    (() => {
+      "use strict";
+
+      const timeline = window.TimelineKit;
+      const events = window.SYNTHETIC_TIMELINE_EVENTS;
+      const minute = 60 * 1000;
+      const bounds = [
+        timeline.toMillis("2026-01-15T09:45:00Z"),
+        timeline.toMillis("2026-01-15T11:30:00Z")
+      ];
+      const minimumDuration = 20 * minute;
+      const overview = document.getElementById("overview");
+      const viewport = document.getElementById("viewport");
+      const startHandle = document.getElementById("start-handle");
+      const endHandle = document.getElementById("end-handle");
+      const detail = document.getElementById("detail");
+      let visibleRange = [
+        timeline.toMillis("2026-01-15T10:00:00Z"),
+        timeline.toMillis("2026-01-15T10:50:00Z")
+      ];
+      let selectedId = null;
+      let previewId = null;
+
+      function rangeFromDrag(event, context, resizeEdge) {
+        const pixels = event.clientX - context.clientX;
+        const delta = (pixels / context.trackWidth) * (bounds[1] - bounds[0]);
+        return resizeEdge
+          ? timeline.resizeRange(context.range, bounds, resizeEdge, delta, minimumDuration)
+          : timeline.panRange(context.range, bounds, delta);
+      }
+
+      function dragContext(event) {
+        return {
+          clientX: event.clientX,
+          range: visibleRange.slice(),
+          trackWidth: overview.getBoundingClientRect().width
+        };
+      }
+
+      function updateEventStates() {
+        document.querySelectorAll("[data-event-id]").forEach((element) => {
+          const selected = element.dataset.eventId === selectedId;
+          const preview = element.dataset.eventId === previewId;
+          element.dataset.selected = String(selected);
+          element.dataset.preview = String(preview);
+
+          if (element.classList.contains("tl-overview-event")) {
+            element.setAttribute("aria-pressed", String(selected));
+          } else {
+            element.setAttribute("aria-selected", String(selected));
+          }
+        });
+      }
+
+      function setPreview(eventId) {
+        previewId = eventId;
+        const event = events.find((candidate) => candidate.id === eventId);
+        document.getElementById("preview-label").textContent = event ? event.label : "None";
+        updateEventStates();
+      }
+
+      function pinEvent(eventId) {
+        const event = events.find((candidate) => candidate.id === eventId);
+
+        if (!event) {
+          return;
+        }
+
+        selectedId = event.id;
+        visibleRange = timeline.ensureTimeVisible(visibleRange, bounds, event.timestamp);
+        document.getElementById("selected-label").textContent = event.label;
+        document.getElementById("live-status").textContent = `${event.label} pinned and visible.`;
+        render();
+      }
+
+      function createOverviewEvents() {
+        events.forEach((event) => {
+          const marker = document.createElement("button");
+          marker.className = "tl-overview-event";
+          marker.type = "button";
+          marker.dataset.eventId = event.id;
+          marker.setAttribute("aria-pressed", "false");
+          marker.setAttribute(
+            "aria-label",
+            `${event.label}, ${timeline.formatUtc(event.timestamp, { seconds: true })}. Pin event.`
+          );
+          timeline.setTimePosition(marker, event.timestamp, bounds);
+          marker.addEventListener("mouseenter", () => setPreview(event.id));
+          marker.addEventListener("mouseleave", () => setPreview(null));
+          marker.addEventListener("focus", () => setPreview(event.id));
+          marker.addEventListener("blur", () => setPreview(null));
+          marker.addEventListener("click", () => pinEvent(event.id));
+          overview.append(marker);
+        });
+      }
+
+      function updateViewport() {
+        const startPosition = timeline.positionForTime(visibleRange[0], bounds);
+        const endPosition = timeline.positionForTime(visibleRange[1], bounds);
+        const formattedRange = timeline.formatRangeUtc(visibleRange);
+
+        viewport.style.setProperty("--tl-start", `${startPosition * 100}%`);
+        viewport.style.setProperty("--tl-width", `${(endPosition - startPosition) * 100}%`);
+        viewport.setAttribute("aria-label", `Visible detail range: ${formattedRange}. Use Left and Right Arrow keys to pan.`);
+        document.getElementById("range-output").textContent = formattedRange;
+
+        [
+          [startHandle, visibleRange[0]],
+          [endHandle, visibleRange[1]]
+        ].forEach(([handle, value]) => {
+          handle.setAttribute("aria-valuemin", "0");
+          handle.setAttribute("aria-valuemax", String((bounds[1] - bounds[0]) / minute));
+          handle.setAttribute("aria-valuenow", String(Math.round((value - bounds[0]) / minute)));
+          handle.setAttribute("aria-valuetext", timeline.formatUtc(value));
+        });
+      }
+
+      function renderDetail() {
+        const filteredEvents = events.filter((event) => timeline.rangeContains(visibleRange, event.timestamp));
+        detail.replaceChildren();
+
+        if (filteredEvents.length === 0) {
+          const empty = document.createElement("p");
+          empty.className = "tl-help";
+          empty.textContent = "No synthetic events fall inside this range.";
+          detail.append(empty);
+          return;
+        }
+
+        filteredEvents.forEach((event) => {
+          const row = document.createElement("div");
+          row.className = "tl-event-row";
+          row.dataset.eventId = event.id;
+          row.dataset.selected = "false";
+          row.dataset.preview = "false";
+          row.tabIndex = 0;
+          row.setAttribute("role", "option");
+          row.setAttribute("aria-selected", "false");
+          row.innerHTML = `
+            <span class="tl-event-row-marker" aria-hidden="true"></span>
+            <span class="tl-event-copy">
+              <strong>${event.label}</strong>
+              <span class="tl-badge tl-badge--${event.category}">${event.category}</span>
+              <p>${event.description}</p>
+            </span>
+            <time class="tl-time" datetime="${event.timestamp}">${timeline.formatUtc(event.timestamp, { seconds: true })}</time>
+          `;
+          row.addEventListener("mouseenter", () => setPreview(event.id));
+          row.addEventListener("mouseleave", () => setPreview(null));
+          row.addEventListener("focus", () => setPreview(event.id));
+          row.addEventListener("blur", () => setPreview(null));
+          row.addEventListener("click", () => pinEvent(event.id));
+          row.addEventListener("keydown", (keyboardEvent) => {
+            if (keyboardEvent.key === "Enter" || keyboardEvent.key === " ") {
+              keyboardEvent.preventDefault();
+              pinEvent(event.id);
+            }
+          });
+          detail.append(row);
+        });
+      }
+
+      function render() {
+        updateViewport();
+        renderDetail();
+        updateEventStates();
+      }
+
+      function keyboardStep(event) {
+        return (event.shiftKey ? 1 : 5) * minute;
+      }
+
+      viewport.addEventListener("keydown", (event) => {
+        const duration = visibleRange[1] - visibleRange[0];
+
+        if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+          event.preventDefault();
+          visibleRange = timeline.panRange(
+            visibleRange,
+            bounds,
+            event.key === "ArrowLeft" ? -keyboardStep(event) : keyboardStep(event)
+          );
+        } else if (event.key === "Home") {
+          event.preventDefault();
+          visibleRange = [bounds[0], bounds[0] + duration];
+        } else if (event.key === "End") {
+          event.preventDefault();
+          visibleRange = [bounds[1] - duration, bounds[1]];
+        } else {
+          return;
+        }
+
+        render();
       });
-    }
 
-    function selectEvent(eventId) {
-      selectedEventId = eventId;
-      const event = events.find(e => e.id === eventId);
-      document.getElementById('selectedLabel').textContent = event ? event.label : 'None';
+      function attachHandleKeyboard(handle, edge) {
+        handle.addEventListener("keydown", (event) => {
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            event.preventDefault();
+            visibleRange = timeline.resizeRange(
+              visibleRange,
+              bounds,
+              edge,
+              event.key === "ArrowLeft" ? -keyboardStep(event) : keyboardStep(event),
+              minimumDuration
+            );
+          } else if (event.key === "Home") {
+            event.preventDefault();
+            visibleRange = edge === "start"
+              ? [bounds[0], visibleRange[1]]
+              : [visibleRange[0], visibleRange[0] + minimumDuration];
+          } else if (event.key === "End") {
+            event.preventDefault();
+            visibleRange = edge === "start"
+              ? [visibleRange[1] - minimumDuration, visibleRange[1]]
+              : [visibleRange[0], bounds[1]];
+          } else {
+            return;
+          }
+
+          visibleRange = timeline.clampRange(
+            visibleRange,
+            bounds,
+            minimumDuration,
+            edge === "start" ? "end" : "start"
+          );
+          render();
+        });
+      }
+
+      timeline.attachPointerDrag(viewport, {
+        onStart(event) {
+          return event.target.closest(".tl-viewport-handle") ? false : dragContext(event);
+        },
+        onMove(event, context) {
+          visibleRange = rangeFromDrag(event, context);
+          render();
+        }
+      });
+
+      [
+        [startHandle, "start"],
+        [endHandle, "end"]
+      ].forEach(([handle, edge]) => {
+        timeline.attachPointerDrag(handle, {
+          onStart: dragContext,
+          onMove(event, context) {
+            visibleRange = rangeFromDrag(event, context, edge);
+            render();
+          }
+        });
+        attachHandleKeyboard(handle, edge);
+      });
+
+      createOverviewEvents();
       render();
-    }
-
-    function render() {
-      renderOverview();
-      renderDetail();
-    }
-
-    // Initial render
-    render();
+      timeline.applyEmbedMode();
+    })();
   </script>
 </body>
 </html>
