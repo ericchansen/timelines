@@ -51,6 +51,7 @@ export function selectResponsiveTicks(candidates, options = {}) {
   // abbreviation tier; `measureLength` is the plot span the labels are drawn in.
   const measureLength = Math.max(1, Number(options.measureLength) || renderedLength);
   const interval = options.interval || "day";
+  const labelScale = Math.max(1, Number(options.labelScale) || 1);
   const requestedAngle = Number(options.labelAngle);
   const labelAngle =
     orientation === "horizontal"
@@ -69,11 +70,11 @@ export function selectResponsiveTicks(candidates, options = {}) {
 
   function labelBounds(tick, index) {
     const center = position(tick);
-    const labelWidth = estimatedLabelWidth(tick.label);
+    const labelWidth = estimatedLabelWidth(tick.label) * labelScale;
     const radians = Math.abs(labelAngle) * Math.PI / 180;
     const footprint =
       orientation === "vertical"
-        ? 22
+        ? 22 * labelScale
         : labelWidth * Math.cos(radians) + 16 * Math.sin(radians);
     // Rotated labels are anchored at their end, so every one of them extends
     // back from its own tick. Unrotated labels are centred except at the edges.

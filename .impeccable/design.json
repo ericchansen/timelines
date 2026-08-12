@@ -1,0 +1,274 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-12T17:08:38-05:00",
+  "title": "Design System: Timelines",
+  "extensions": {
+    "colorMeta": {
+      "accent": {
+        "role": "primary",
+        "displayName": "Signal Indigo",
+        "canonical": "#4c5dff",
+        "darkValue": "#8290ff",
+        "tonalRamp": ["#14195c", "#1e2680", "#2638e8", "#4c5dff", "#7684ff", "#9ba5ff", "#c4caff", "#e8eaff"]
+      },
+      "accent-strong": {
+        "role": "primary",
+        "displayName": "Pressed Indigo",
+        "canonical": "#2638e8",
+        "darkValue": "#a7b0ff",
+        "tonalRamp": ["#0d1145", "#141a6b", "#1c26a8", "#2638e8", "#5a68f0", "#8b95f5", "#bcc2fa", "#e6e9fe"]
+      },
+      "accent-soft": {
+        "role": "primary",
+        "displayName": "Indigo Wash",
+        "canonical": "#e8eaff",
+        "darkValue": "#252b4d",
+        "tonalRamp": ["#1a1d3d", "#252b4d", "#3b4478", "#5a66a8", "#8b95cf", "#b4bce8", "#d4d8f6", "#e8eaff"]
+      },
+      "secondary": {
+        "role": "secondary",
+        "displayName": "Aggregate Green",
+        "canonical": "#00a57a",
+        "darkValue": "#3fd4a9",
+        "tonalRamp": ["#00281d", "#003f2e", "#006147", "#00825f", "#00a57a", "#3fd4a9", "#8ce7ca", "#d6f7ec"]
+      },
+      "tertiary": {
+        "role": "tertiary",
+        "displayName": "Composition Amber",
+        "canonical": "#df8b19",
+        "darkValue": "#f0ae4a",
+        "tonalRamp": ["#3a2304", "#5a3708", "#8a530d", "#b26b12", "#df8b19", "#f0ae4a", "#f7cf90", "#fdeed3"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#17191f",
+        "darkValue": "#f3f5f8",
+        "tonalRamp": ["#0b0c10", "#17191f", "#2b303b", "#454c5a", "#5e6570", "#7d8590", "#aeb5c0", "#f3f5f8"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Muted Ink",
+        "canonical": "#5e6570",
+        "darkValue": "#aeb5c0",
+        "tonalRamp": ["#16181d", "#24272e", "#3a3f48", "#4b515c", "#5e6570", "#858e9c", "#aeb5c0", "#dfe3e9"]
+      },
+      "faint": {
+        "role": "neutral",
+        "displayName": "Faint Ink",
+        "canonical": "#7d8590",
+        "darkValue": "#858e9c",
+        "tonalRamp": ["#1b1e23", "#2b303b", "#434a55", "#5d656f", "#7d8590", "#9ba2ac", "#c3c9d1", "#e9ecf0"]
+      },
+      "page": {
+        "role": "neutral",
+        "displayName": "Cool Paper",
+        "canonical": "#f7f8fa",
+        "darkValue": "#101217",
+        "tonalRamp": ["#101217", "#181b22", "#2b303b", "#4a5160", "#8a93a3", "#c3c9d3", "#e6e9ee", "#f7f8fa"]
+      },
+      "surface-strong": {
+        "role": "neutral",
+        "displayName": "Raised Paper",
+        "canonical": "#ffffff",
+        "darkValue": "#181b22",
+        "tonalRamp": ["#101217", "#181b22", "#252932", "#3c424e", "#767f8d", "#b9c0ca", "#e9ebef", "#ffffff"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#d9dde4",
+        "darkValue": "#2b303b",
+        "tonalRamp": ["#15171c", "#2b303b", "#3f4552", "#5a6170", "#8b93a1", "#b4bbc6", "#d9dde4", "#f0f2f5"]
+      },
+      "axis": {
+        "role": "neutral",
+        "displayName": "Axis Grey",
+        "canonical": "#8a93a3",
+        "darkValue": "#737d8d",
+        "tonalRamp": ["#181b21", "#272c35", "#3d434f", "#565e6c", "#737d8d", "#8a93a3", "#b6bcc7", "#e2e5ea"]
+      },
+      "focus": {
+        "role": "neutral",
+        "displayName": "Focus Blue",
+        "canonical": "#005fcc",
+        "darkValue": "#9cc4ff",
+        "tonalRamp": ["#001832", "#00264f", "#003b7a", "#004ba3", "#005fcc", "#3d8aec", "#7fb2f6", "#cfe2ff"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "The h1 on an individual example page. The catalog index never uses it." },
+      "headline": { "displayName": "Headline", "purpose": "Example name at the top of each catalog section; the strongest type on the index." },
+      "subtitle": { "displayName": "Subtitle", "purpose": "h3 inside guidance blocks and the keyboard panel." },
+      "section-title": { "displayName": "Section Title", "purpose": "Supporting h2 headings outside the catalog index." },
+      "lede": { "displayName": "Lede", "purpose": "The single-line description beneath an example-page title." },
+      "body": { "displayName": "Body", "purpose": "Prose and panel lists, capped at 72ch." },
+      "summary": { "displayName": "Summary", "purpose": "The single muted line under each example heading, capped at 58ch." },
+      "label": { "displayName": "Label", "purpose": "Control labels and the reset button; compact enough to keep two control rows above the fold." },
+      "group-name": { "displayName": "Group Name", "purpose": "DATA and APPEARANCE row markers; the only uppercase chrome type." },
+      "readout": { "displayName": "Readout", "purpose": "Live monospace numeric value beside each slider." },
+      "toolbar": { "displayName": "Toolbar", "purpose": "Header controls and navigation actions." },
+      "meta": { "displayName": "Meta", "purpose": "Detail links and semantic-feed timestamps." },
+      "breadcrumb": { "displayName": "Breadcrumb", "purpose": "The compact page-position line above example titles." },
+      "code": { "displayName": "Code", "purpose": "Code blocks and API reference tables." },
+      "chart-tick": { "displayName": "Chart Tick", "purpose": "SVG axis labels; px so they scale with the viewBox, not the root font size." },
+      "chart-month": { "displayName": "Chart Month", "purpose": "Uppercase month boundary ticks inside charts." }
+    },
+    "shadows": [
+      {
+        "name": "spine-ring",
+        "value": "0 0 0 var(--tl-axis-width) var(--tl-color-axis)",
+        "purpose": "The only box-shadow in the system. Rings the semantic-feed marker so the dot stays visually attached to the spine at any axis width. Structural, blurless, offsetless."
+      },
+      {
+        "name": "reserved-shadow-token",
+        "value": "rgb(23 25 31 / 12%) light / rgb(0 0 0 / 34%) dark",
+        "purpose": "Declared as --tl-color-shadow in :root for both themes but consumed nowhere. Reserved, not an invitation to start shadowing."
+      }
+    ],
+    "motion": [
+      { "name": "fast", "value": "140ms", "purpose": "The only duration token (--tl-motion-fast). Applied to marker fill/stroke and to input border/background." },
+      { "name": "ease-out", "value": "ease-out", "purpose": "The only easing used; state changes settle rather than overshoot." },
+      { "name": "reduced-motion", "value": "transition-duration: 0.01ms !important", "purpose": "prefers-reduced-motion collapses all transitions, animations, and smooth scrolling globally." }
+    ],
+    "breakpoints": [
+      { "name": "lg", "value": "52rem", "purpose": "Control rows become a 4-column wrapping grid; headings collapse to one column; keyboard panel becomes a bottom sheet." },
+      { "name": "md", "value": "38rem", "purpose": "Control rows drop to 3 columns with 0.625rem gaps; SVGs release their desktop height floor; reset stretches." },
+      { "name": "sm", "value": "26rem", "purpose": "Control rows drop to 2 columns." }
+    ],
+    "geometry": [
+      { "name": "chart-viewbox", "value": "960 x 360", "purpose": "Shared SVG coordinate space; plot band spans x 72 to 888." },
+      { "name": "calendar-viewbox", "value": "620 x 300", "purpose": "Tighter SVG coordinate space that fits the familiar week-by-day grid without dead space." },
+      { "name": "responsive-chart-type", "value": "11px / 12px rendered", "purpose": "Chart type scales in SVG user units at narrow widths while geometry reserves the corresponding space." },
+      { "name": "page-width", "value": "min(88rem, 100% - 2rem)", "purpose": "Single centred column with overflow-x: clip so no chart can push the page sideways." },
+      { "name": "reading-width", "value": "72ch", "purpose": "Prose cap; example summaries are capped tighter at 58ch." },
+      { "name": "hit-target", "value": "2.75rem", "purpose": "Minimum height for form controls, including the reset button; shared site-header actions use 2rem targets." }
+    ],
+    "declaredButUnused": [
+      { "name": "--tl-radius-md", "value": "0.625rem", "note": "Declared in :root, referenced nowhere. Do not use it to soften new chrome." },
+      { "name": "--tl-space-7", "value": "3rem", "note": "Declared in :root, referenced nowhere." },
+      { "name": "--tl-color-shadow", "value": "rgb(23 25 31 / 12%)", "note": "Declared for both themes, referenced nowhere. The system is flat." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Site Theme Action",
+      "kind": "button",
+      "refersTo": "button-toolbar",
+      "description": "The shared site header's icon-only theme action, identical on catalog, detail, and documentation pages.",
+      "html": "<button class=\"ds-btn-toolbar\" type=\"button\" aria-label=\"Dark theme\" aria-pressed=\"false\"><span aria-hidden=\"true\">\u25d0</span></button>",
+      "css": ".ds-btn-toolbar { display: inline-flex; align-items: center; justify-content: center; width: 2rem; min-height: 2rem; padding: 0.25rem; border: 1px solid transparent; border-radius: 0.375rem; background: transparent; color: var(--tl-color-muted, #5e6570); font: 650 0.75rem/1.5 \"Helvetica Neue\", \"Segoe UI\", Aptos, system-ui, sans-serif; cursor: pointer; } .ds-btn-toolbar:hover, .ds-btn-toolbar[aria-pressed=\"true\"] { color: var(--tl-color-accent-strong, #2638e8); } .ds-btn-toolbar:focus-visible { outline: 0.1875rem solid var(--tl-color-focus, #005fcc); outline-offset: 0.1875rem; }"
+    },
+    {
+      "name": "Reset Button",
+      "kind": "button",
+      "refersTo": "button-reset",
+      "description": "The quiet peer at the end of the Appearance control row. Full 2.75rem hit target so it lines up with the sliders beside it.",
+      "html": "<button class=\"ds-btn-reset\" type=\"button\">Reset</button>",
+      "css": ".ds-btn-reset { min-height: 2.75rem; padding: 0.45rem 0.7rem; border: 1px solid var(--tl-color-border, #d9dde4); border-radius: 0.375rem; background: var(--tl-color-surface-strong, #ffffff); color: var(--tl-color-muted, #5e6570); font: 650 0.72rem/1.5 \"Helvetica Neue\", \"Segoe UI\", Aptos, system-ui, sans-serif; cursor: pointer; transition: border-color 140ms ease-out, color 140ms ease-out; } .ds-btn-reset:hover { border-color: var(--tl-color-accent, #4c5dff); color: var(--tl-color-ink, #17191f); } .ds-btn-reset:focus-visible { outline: 0.1875rem solid var(--tl-color-focus, #005fcc); outline-offset: 0.1875rem; }"
+    },
+    {
+      "name": "Data Select",
+      "kind": "input",
+      "refersTo": "control-select",
+      "description": "The Data row control: label above, native select below, aligned on a two-row subgrid with every other control type.",
+      "html": "<label class=\"ds-control\" for=\"ds-scenario\"><span class=\"ds-control-label\">Scenario</span><select class=\"ds-control-input\" id=\"ds-scenario\"><option>Standard</option><option>Sparse</option><option>Dense</option></select></label>",
+      "css": ".ds-control { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 0.25rem; width: 10rem; color: var(--tl-color-muted, #5e6570); font: 650 0.72rem/1.5 \"Helvetica Neue\", \"Segoe UI\", Aptos, system-ui, sans-serif; } .ds-control-label { grid-column: 1; align-self: end; white-space: nowrap; } .ds-control-input { grid-column: 1 / -1; box-sizing: border-box; block-size: 2.75rem; min-width: 7.5rem; padding-inline: 0.75rem 2rem; border: 1px solid var(--tl-color-border, #d9dde4); border-radius: 0.375rem; background: var(--tl-color-surface-strong, #ffffff); color: var(--tl-color-ink, #17191f); font: inherit; cursor: pointer; transition: border-color 140ms ease-out, background-color 140ms ease-out; } .ds-control-input:hover { border-color: color-mix(in srgb, var(--tl-color-accent, #4c5dff) 55%, var(--tl-color-border, #d9dde4)); } .ds-control-input:focus-visible { outline: 0.1875rem solid var(--tl-color-focus, #005fcc); outline-offset: 0.1875rem; }"
+    },
+    {
+      "name": "Appearance Slider",
+      "kind": "input",
+      "refersTo": "control-range",
+      "description": "Borderless range with a right-aligned monospace readout that updates live and is clamped to the renderer's documented bounds.",
+      "html": "<label class=\"ds-control-range\" for=\"ds-marker\"><span class=\"ds-range-label\">Marker size</span><output class=\"ds-range-readout\" for=\"ds-marker\">7</output><input class=\"ds-range-input\" id=\"ds-marker\" type=\"range\" min=\"2\" max=\"20\" step=\"1\" value=\"7\"></label>",
+      "css": ".ds-control-range { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.3rem 0.25rem; width: 7.25rem; color: var(--tl-color-muted, #5e6570); font: 650 0.72rem/1.5 \"Helvetica Neue\", \"Segoe UI\", Aptos, system-ui, sans-serif; } .ds-range-label { grid-column: 1; align-self: end; white-space: nowrap; } .ds-range-readout { grid-column: 2; justify-self: end; min-width: 2rem; color: var(--tl-color-faint, #7d8590); font: 0.72rem/1.4 Consolas, \"Courier New\", monospace; text-align: right; } .ds-range-input { grid-column: 1 / -1; box-sizing: border-box; block-size: 2.75rem; width: 100%; margin: 0; padding: 0; border: 1px solid transparent; background: transparent; accent-color: var(--tl-color-accent, #4c5dff); cursor: pointer; } .ds-range-input:focus-visible { outline: 0.1875rem solid var(--tl-color-focus, #005fcc); outline-offset: 0.1875rem; }"
+    },
+    {
+      "name": "Colour Swatch",
+      "kind": "input",
+      "refersTo": "control-swatch",
+      "description": "Compact 1.5rem colour chip centered inside a transparent 2.75rem touch target.",
+      "html": "<label class=\"ds-control-color\" for=\"ds-marker-color\"><span class=\"ds-color-label\">Marker color</span><input class=\"ds-color-input\" id=\"ds-marker-color\" type=\"color\" value=\"#4c5dff\"></label>",
+      "css": ".ds-control-color { display: grid; gap: 0.3rem; width: 6rem; color: var(--tl-color-muted, #5e6570); font: 650 0.72rem/1.5 \"Helvetica Neue\", \"Segoe UI\", Aptos, system-ui, sans-serif; } .ds-color-label { white-space: nowrap; } .ds-color-input { box-sizing: border-box; block-size: 2.75rem; width: 2.75rem; min-width: 2.75rem; padding: 0.625rem; border: 1px solid transparent; border-radius: 0.375rem; background: transparent; cursor: pointer; } .ds-color-input::-webkit-color-swatch-wrapper { padding: 0; } .ds-color-input::-webkit-color-swatch { border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 0.375rem; } .ds-color-input::-moz-color-swatch { border: 1px solid color-mix(in srgb, currentColor 18%, transparent); border-radius: 0.375rem; } .ds-color-input:focus-visible { outline: 0.1875rem solid var(--tl-color-focus, #005fcc); outline-offset: 0.1875rem; }"
+    },
+    {
+      "name": "Control Block",
+      "kind": "custom",
+      "refersTo": "catalog-section",
+      "description": "The signature component: two borderless fieldset rows, Data then Appearance, separated by spacing and sitting directly above the chart they drive.",
+      "html": "<form class=\"ds-controls\"><fieldset class=\"ds-group\"><legend class=\"ds-hidden\">Data</legend><span class=\"ds-group-name\" aria-hidden=\"true\">Data</span><label class=\"ds-cell\"><span>Scenario</span><select class=\"ds-field\"><option>Standard</option></select></label><label class=\"ds-cell\"><span>Interval</span><select class=\"ds-field\"><option>Week</option></select></label></fieldset><fieldset class=\"ds-group\"><legend class=\"ds-hidden\">Appearance</legend><span class=\"ds-group-name\" aria-hidden=\"true\">Appearance</span><label class=\"ds-cell\"><span>Axis width</span><input class=\"ds-field\" type=\"range\" min=\"0.5\" max=\"8\" step=\"0.25\" value=\"1.5\"></label><button class=\"ds-reset\" type=\"button\">Reset</button></fieldset></form>",
+      "css": ".ds-controls { display: grid; gap: 0.25rem; font-family: \"Helvetica Neue\", \"Segoe UI\", Aptos, system-ui, sans-serif; } .ds-group { display: grid; grid-auto-flow: column; grid-auto-columns: auto; grid-template-columns: 5.5rem; align-items: end; justify-content: start; gap: 0.25rem 0.75rem; margin: 0; padding: 0.25rem 0; border: 0; } .ds-group-name { align-self: center; color: var(--tl-color-faint, #7d8590); font: 700 0.67rem/1 inherit; letter-spacing: 0.1em; text-transform: uppercase; } .ds-cell { display: grid; gap: 0.3rem; width: 10rem; color: var(--tl-color-muted, #5e6570); font: 650 0.72rem/1.5 inherit; } .ds-field { box-sizing: border-box; block-size: 2.75rem; width: 100%; padding-inline: 0.75rem; border: 1px solid var(--tl-color-border, #d9dde4); border-radius: 0.375rem; background: var(--tl-color-surface-strong, #ffffff); color: inherit; font: inherit; } .ds-field[type=\"range\"] { padding: 0; border-color: transparent; background: transparent; accent-color: var(--tl-color-accent, #4c5dff); } .ds-reset { min-height: 2.75rem; padding: 0.45rem 0.7rem; border: 1px solid var(--tl-color-border, #d9dde4); border-radius: 0.375rem; background: var(--tl-color-surface-strong, #ffffff); color: var(--tl-color-muted, #5e6570); font: 650 0.72rem/1.5 inherit; cursor: pointer; } .ds-reset:hover { border-color: var(--tl-color-accent, #4c5dff); color: var(--tl-color-ink, #17191f); } .ds-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }"
+    },
+    {
+      "name": "Catalog Section Heading",
+      "kind": "nav",
+      "refersTo": "link-detail",
+      "description": "Example name, trailing detail link, and one-line summary. The heading row is the entire navigation affordance for an example.",
+      "html": "<header class=\"ds-heading\"><h2>Volume lollipop</h2><a class=\"ds-detail\" href=\"#\">View details</a><p>Temporal buckets rendered as stems and heads, including empty intervals.</p></header>",
+      "css": ".ds-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: baseline; gap: 0.625rem 1.5rem; font-family: \"Helvetica Neue\", \"Segoe UI\", Aptos, system-ui, sans-serif; } .ds-heading h2 { margin: 0; color: var(--tl-color-ink, #17191f); font-size: clamp(1.6rem, 3vw, 2.35rem); line-height: 1.08; letter-spacing: -0.035em; text-wrap: balance; } .ds-heading p { grid-column: 1 / -1; max-width: 58ch; margin: 0; color: var(--tl-color-muted, #5e6570); font-size: 0.95rem; line-height: 1.5; } .ds-detail { white-space: nowrap; color: var(--tl-color-muted, #5e6570); font-size: 0.82rem; font-weight: 650; text-decoration: none; } .ds-detail::after { margin-left: 0.35rem; content: \"\u2192\"; } .ds-detail:hover { color: var(--tl-color-ink, #17191f); } .ds-detail:focus-visible { outline: 0.1875rem solid var(--tl-color-focus, #005fcc); outline-offset: 0.1875rem; }"
+    },
+    {
+      "name": "Notice",
+      "kind": "card",
+      "refersTo": "notice",
+      "description": "Left-rule callout in aggregate green for empty and edge-case messaging. Square corners, no shadow, no full border.",
+      "html": "<p class=\"ds-notice\">No events fall inside this range. The axis still spans the full domain.</p>",
+      "css": ".ds-notice { margin: 0; padding: 0.75rem 1rem; border-left: 0.25rem solid var(--tl-color-secondary, #00a57a); background: color-mix(in srgb, var(--tl-color-secondary, #00a57a) 10%, transparent); color: var(--tl-color-muted, #5e6570); font: 400 1rem/1.5 \"Helvetica Neue\", \"Segoe UI\", Aptos, system-ui, sans-serif; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Open Bench",
+    "overview": "Timelines is a workbench, not a showroom. Twelve real renderers are laid out in one vertical scroll, each with its own controls bolted directly above it, and nothing is put behind glass. There is no hero, no visible wordmark, no card grid, no numbered section decoration, and no narrative copy between examples. An engineer arrives, reads a name and one line of summary, turns two rows of knobs, watches the live SVG respond, and scrolls to the next instrument. The page is the evidence.\n\nThe surface is a cool neutral light or dark field with no tonal container ladder: every example sits on the same background and is separated from its neighbour by whitespace and heading hierarchy. Density is compact and instrument-like. Indigo carries every event, marker, and interactive edge; green carries every aggregate magnitude; the chrome is otherwise ink and muted grey. Rectangles are honest rectangles - only the interactive inputs soften, and only by 6px.\n\nRejections are explicit and confirmed: no hero section, no visible wordmark, no card grid, no section-number decoration, no explanatory prose beyond the one-line summary, no horizontal section rules, and no boxed containers wrapping a chart. Depth is not a tool here. If something needs to read as separate, spacing and typography must do the work.",
+    "keyCharacteristics": [
+      "One vertical scroll containing all twelve live renderers, in order, unwrapped.",
+      "Controls grouped as exactly two labelled rows - Data, then Appearance - above the chart they drive.",
+      "Cool neutral surfaces (#f7f8fa / #101217) with whitespace instead of section dividers.",
+      "Indigo for events, green for aggregates; a third amber only inside stacked composition.",
+      "Compact system-sans throughout; monospace reserved for numeric readouts and code.",
+      "Flat by default: one structural box-shadow exists in the whole system."
+    ],
+    "rules": [
+      { "name": "The Two-Signal Rule", "body": "Indigo means an individual event; green means an aggregated quantity. A renderer never swaps them, and no third colour enters a chart unless it is encoding a categorical type.", "section": "colors" },
+      { "name": "The Whitespace Rule", "body": "Catalog sections and control groups are separated by spacing and typography, never horizontal rules. Hairlines are reserved for interactive or semantic boundaries.", "section": "layout" },
+      { "name": "The Wash-Never-Ground Rule", "body": "#e8eaff is a state tint on small elements only. It never becomes a section, panel, or card background.", "section": "colors" },
+      { "name": "The One-Family Rule", "body": "One sans stack carries the entire interface. Monospace appears only where characters are being compared as data: numeric readouts, timestamps, code blocks, and API reference tables.", "section": "typography" },
+      { "name": "The No Wordmark Rule", "body": "The site has no visible title or logo. The content is the product; the shared header contains actions only.", "section": "layout" },
+      { "name": "The Shared Shell Rule", "body": "Catalog, detail, and documentation pages mount the same site header from src/site-ui.js. Page-specific actions belong in content, not in a competing header.", "section": "layout" },
+      { "name": "The Uppercase Budget Rule", "body": "Uppercase is spent on exactly two things: the control-group names and month ticks. Nothing else shouts.", "section": "typography" },
+      { "name": "The Unboxed Catalog Rule", "body": "An example is never wrapped in a card, panel, or bordered container. Its only boundary is the whitespace around it.", "section": "layout" },
+      { "name": "The Controls-Above Rule", "body": "Controls belong in the same scroll column, directly above the chart they drive, in two labelled rows. They are never docked, floated, collapsed into a drawer, or placed in a sidebar.", "section": "layout" },
+      { "name": "The Two-Row Rule", "body": "All controls fall into exactly two groups: Data (what is rendered) and Appearance (how it looks). A new control joins one of them; it does not create a third row.", "section": "layout" },
+      { "name": "The No-Lift Rule", "body": "Nothing in this interface floats. Hover changes border colour and fill, never elevation, never translateY.", "section": "elevation" },
+      { "name": "The Square Chrome Rule", "body": "Page-level surfaces are square. If a container has a radius, it is either something the user manipulates or a sheet anchored to the viewport edge.", "section": "shapes" }
+    ],
+    "dos": [
+      "Do keep all twelve examples in one continuous vertical scroll, in catalog order, each with its live renderer in the page.",
+      "Do put controls directly above the chart they drive, grouped into exactly two labelled rows: Data, then Appearance.",
+      "Do mount the shared site header and component heading from src/site-ui.js.",
+      "Do separate examples through compact vertical rhythm and clear heading hierarchy.",
+      "Do use indigo (#4c5dff) for discrete events and green (#00a57a) for aggregate magnitude, in every renderer, without exception.",
+      "Do give every form control the full 2.75rem hit target, including the reset button.",
+      "Do style chart internals through the --tl-*-local custom-property contract so appearance controls keep working.",
+      "Do keep chart text in px inside the viewBox, and keep chrome text in rem.",
+      "Do honour both data-theme and prefers-color-scheme, and keep every colour role present in both themes."
+    ],
+    "donts": [
+      "Don't add a hero section, a marketing banner, or a landing intro above the catalog.",
+      "Don't author page-local header or theme-toggle markup.",
+      "Don't arrange examples as a card grid, and don't wrap an example, its controls, or its chart in a card, panel, or bordered container.",
+      "Don't divide catalog sections or control groups with horizontal rules; whitespace carries the hierarchy.",
+      "Don't add section numbers, step counters, or decorative ordinals to example headings.",
+      "Don't add narrative or explanatory copy between examples; the one-line summary and the detail link are the entire budget.",
+      "Don't introduce box-shadow for elevation - the spine ring is the only shadow in the system, and it is structural.",
+      "Don't use indigo wash (#e8eaff) as a section or page background.",
+      "Don't move controls into a sidebar, a sticky bar, a modal, or a collapsed drawer.",
+      "Don't add a third control group; a new control joins Data or Appearance.",
+      "Don't soften page-level containers - squares stay square, and --tl-radius-md stays unused."
+    ],
+    "openObservations": [
+      "Mobile Appearance rows can end with an empty trailing grid cell when a renderer exposes an odd number of controls; this is acceptable asymmetry in the responsive instrument grid.",
+      "The semantic horizontal feed intentionally scrolls and snaps one item at a time on narrow viewports rather than compressing its prose.",
+      "Aggregate green first appears below the event-only renderers in the catalog because colour follows data meaning, not viewport composition."
+    ]
+  }
+}
