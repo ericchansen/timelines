@@ -11,18 +11,32 @@ import {
   createTimeScale,
   createTicks,
   createUtcInterval,
+  estimatedLabelWidth,
+  formatResponsiveTick,
   layoutLabels,
   markerGeometry,
+  normalizeAppearanceOptions,
   panRange,
   renderCalendarHeatmap,
+  renderEventRug,
+  renderLifecycleRanges,
   renderOverviewDetail,
+  renderRelativeJourneys,
+  renderVolumeLollipop,
   rendererRegistry,
-  resizeRange
+  resizeRange,
+  selectResponsiveTicks
 } from "../src/index.js";
 import * as packageExports from "../src/index.js";
 import { attachThemeToggle } from "../src/core/theme.js";
 import { createRenderer } from "../src/core/renderer.js";
 import { components } from "../src/catalog-data.js";
+import { clampControlValue, getRendererControlMetadata } from "../src/controls.js";
+import {
+  syntheticEvents,
+  syntheticJourneys,
+  syntheticRanges
+} from "../src/fixtures/synthetic-data.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 let passed = 0;
@@ -35,7 +49,12 @@ function test(name, callback) {
 
 function walk(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
-    if (entry.name === ".git" || entry.name === ".screenshots" || entry.name === ".impeccable") return [];
+    if (
+      entry.name === ".git" ||
+      entry.name === ".screenshots" ||
+      entry.name === ".impeccable" ||
+      entry.name === "browser-check"
+    ) return [];
     const target = path.join(directory, entry.name);
     return entry.isDirectory() ? walk(target) : [target];
   });
@@ -59,7 +78,7 @@ class FakeElement extends EventTarget {
         this.style[name] = value;
       }
     };
-    this.clientWidth = 960;
+    this.clientWidth = ownerDocument?.renderWidth ?? 960;
     this.clientHeight = 430;
     this.tabIndex = -1;
   }
@@ -88,13 +107,14 @@ class FakeElement extends EventTarget {
     if (this.capturedPointer === pointerId) this.capturedPointer = null;
   }
   getBoundingClientRect() {
-    return { width: 960, height: 430 };
+    return { width: this.clientWidth, height: this.clientHeight };
   }
 }
 
 class FakeDocument {
-  constructor(defaultView = {}) {
+  constructor(defaultView = {}, renderWidth = 960) {
     this.defaultView = defaultView;
+    this.renderWidth = renderWidth;
   }
   createElement(name) {
     return new FakeElement(this, name);
@@ -125,6 +145,18 @@ function pointerEvent(type, properties) {
     Object.defineProperty(event, name, { value });
   });
   return event;
+}
+
+function catalogFixture(component) {
+  if (component.dataKind === "ranges") return syntheticRanges;
+  if (component.dataKind === "journeys") return syntheticJourneys;
+  return syntheticEvents;
+}
+
+function tickAngles(container) {
+  return findAllByClass(container, "tl-tick-label").map(
+    (label) => (label.getAttribute("transform") || "").match(/rotate\((-?[\d.]+)/)?.[1] ?? "0"
+  );
 }
 
 test("time scales stay finite for normal, reversed, and identical domains", () => {
@@ -204,6 +236,104 @@ test("week and month aggregation bins preserve calendar boundaries", () => {
   assert.deepEqual(monthBins.map((bin) => bin.start), [utc(2026, 5, 1), utc(2026, 6, 1), utc(2026, 7, 1)]);
 });
 
+test("responsive ticks preserve calendar positions, formats, bounds, and non-overlap", () => {
+  const domain = [utc(2026, 7, 6), utc(2026, 9, 7)];
+  const candidates = createTicks(domain, "week");
+  const wide = selectResponsiveTicks(candidates, {
+    domain,
+    interval: "week",
+    orientation: "horizontal",
+    renderedLength: 840
+  });
+  const narrow = selectResponsiveTicks(candidates, {
+    domain,
+    interval: "week",
+    orientation: "horizontal",
+    renderedLength: 220
+  });
+  const vertical = selectResponsiveTicks(candidates, {
+    domain,
+    interval: "week",
+    orientation: "vertical",
+    renderedLength: 180
+  });
+  const flat = selectResponsiveTicks(candidates, {
+    domain,
+    interval: "week",
+    orientation: "horizontal",
+    renderedLength: 220,
+    labelAngle: 0
+  });
+  const verticalLabels = selectResponsiveTicks(candidates, {
+    domain,
+    interval: "week",
+    orientation: "horizontal",
+    renderedLength: 220,
+    labelAngle: -90
+  });
+  assert.equal(formatResponsiveTick(utc(2026, 7, 13), "week", 840), "Week of Jul 13");
+  assert.equal(formatResponsiveTick(utc(2026, 7, 13), "week", 500), "Jul 13");
+  assert.equal(formatResponsiveTick(utc(2026, 7, 13), "week", 220), "7/13");
+  assert.equal(formatResponsiveTick(utc(2026, 7, 1), "month", 840), "Jul 2026");
+  assert.equal(formatResponsiveTick(utc(2026, 7, 1), "month", 220), "7/1/26");
+  assert.match(wide[0].label, /^Week of /);
+  assert.match(narrow[0].label, /^\d+\/\d+$/);
+  assert.ok(narrow.length < candidates.length);
+  assert.equal(narrow[0].value, candidates[0].value);
+  assert.equal(narrow.at(-1).value, candidates.at(-1).value);
+  assert.ok(narrow.every((tick) => tick.value >= domain[0] && tick.value <= domain[1]));
+  assert.ok(vertical.length < candidates.length);
+  assert.ok(vertical.every((tick) => tick.rotated === false));
+  assert.ok(flat.every((tick) => tick.labelAngle === 0 && tick.rotated === false));
+  assert.ok(verticalLabels.every((tick) => tick.labelAngle === -90 && tick.rotated));
+  const scale = createTimeScale(domain, [0, 220]);
+  assert.ok(narrow.every((tick) => scale(tick.value) >= 0 && scale(tick.value) <= 220));
+  assert.ok(selectResponsiveTicks(candidates.slice(0, 2), {
+    domain: [candidates[0].value, candidates[1].value],
+    interval: "week",
+    renderedLength: 60
+  }).every((tick) => tick.rotated));
+});
+
+test("appearance options and control inputs clamp to finite scoped values", () => {
+  const options = normalizeAppearanceOptions({
+    axisWidth: 99,
+    rugWidth: -2,
+    rugLength: 999,
+    markerRadius: Number.NaN,
+    markerAxisOffset: -999,
+    aggregateBarWidth: 999,
+    labelGap: -1,
+    labelAngle: -999,
+    axisColor: "  #123456 "
+  });
+  assert.equal(options.axisWidth, 8);
+  assert.equal(options.rugWidth, 0.5);
+  assert.equal(options.rugLength, 72);
+  assert.equal(options.markerRadius, 7);
+  assert.equal(options.markerAxisOffset, -80);
+  assert.equal(options.aggregateBarWidth, 56);
+  assert.equal(options.labelGap, 4);
+  assert.equal(options.labelAngle, -90);
+  assert.equal(options.axisColor, "#123456");
+
+  const rug = getRendererControlMetadata(components.find((component) => component.id === "event-rug"));
+  assert.deepEqual(rug.common.map((control) => control.name), ["scenario", "orientation", "interval"]);
+  assert.deepEqual(rug.appearance.map((control) => control.name), [
+    "axisColor",
+    "axisWidth",
+    "rugColor",
+    "rugWidth",
+    "rugLength",
+    "labelGap",
+    "labelAngle"
+  ]);
+  assert.equal(rug.appearance.find((control) => control.name === "labelAngle").horizontalOnly, true);
+  const width = rug.appearance.find((control) => control.name === "rugWidth");
+  assert.equal(clampControlValue(width, "999"), 8);
+  assert.equal(clampControlValue(width, "not-a-number"), 1.25);
+});
+
 test("calendar heatmap rows use the core Monday-based week contract", () => {
   const document = new FakeDocument();
   const container = new FakeElement(document);
@@ -220,6 +350,24 @@ test("calendar heatmap rows use the core Monday-based week contract", () => {
   handle.destroy();
 });
 
+test("calendar heatmap labels its weekday gutter and month columns", () => {
+  const document = new FakeDocument();
+  const container = new FakeElement(document);
+  const handle = renderCalendarHeatmap(container, { data: syntheticEvents });
+  const weekdays = findAllByClass(container, "tl-tick-label--weekday").map((label) => label.textContent);
+  const months = findAllByClass(container, "tl-tick-label--month").map((label) => label.textContent);
+  assert.deepEqual(weekdays, ["Mon", "Wed", "Fri", "Sun"]);
+  assert.ok(months.length >= 2, `expected month labels, saw ${months.join(",")}`);
+  assert.ok(months.every((label) => /^[A-Z][a-z]{2} \d{4}$/.test(label)), months.join(","));
+  assert.ok(
+    findAllByClass(container, "tl-calendar-cell").every((cell) =>
+      cell.children.some((child) => child.name === "title")
+    ),
+    "every calendar cell needs an accessible title"
+  );
+  handle.destroy();
+});
+
 test("default marker centers exactly equal axis centers in both orientations", () => {
   const horizontal = markerGeometry(123.5, { orientation: "horizontal", axis: 72, markerAxisOffset: 0 });
   assert.equal(horizontal.x, horizontal.axisX);
@@ -229,6 +377,298 @@ test("default marker centers exactly equal axis centers in both orientations", (
   assert.equal(vertical.x, vertical.axisX);
   assert.equal(vertical.y, vertical.axisY);
   assert.equal(vertical.connector, null);
+});
+
+test("event rug applies scoped appearance without leaking to siblings", () => {
+  const document = new FakeDocument();
+  const data = [
+    { id: "a", time: new Date(utc(2026, 5, 4)).toISOString(), label: "Paper moon opened" },
+    { id: "b", time: new Date(utc(2026, 5, 11)).toISOString(), label: "Paper moon folded" }
+  ];
+  const customized = new FakeElement(document);
+  const defaulted = new FakeElement(document);
+  const customHandle = renderEventRug(customized, {
+    data,
+    axisColor: "#123456",
+    axisWidth: 99,
+    rugColor: "#654321",
+    rugWidth: 7,
+    rugLength: 999,
+    markerAxisOffset: 999
+  });
+  const defaultHandle = renderEventRug(defaulted, { data });
+  const customChart = findByClass(customized, "tl-chart");
+  const defaultChart = findByClass(defaulted, "tl-chart");
+  const mark = findByClass(customized, "tl-rug-mark");
+  assert.equal(customChart.style["--tl-axis-color-local"], "#123456");
+  assert.equal(customChart.style["--tl-axis-width-local"], "8");
+  assert.equal(customChart.style["--tl-rug-color-local"], "#654321");
+  assert.equal(defaultChart.style["--tl-axis-color-local"], undefined);
+  assert.equal(Math.abs(Number(mark.getAttribute("y2")) - Number(mark.getAttribute("y1"))), 72);
+  customHandle.destroy();
+  defaultHandle.destroy();
+});
+
+test("responsive axes retain bounded anchors and honor scoped label angles", () => {
+  const document = new FakeDocument();
+  const container = new FakeElement(document);
+  const data = Array.from({ length: 12 }, (_, index) => ({
+    id: `event-${index}`,
+    time: new Date(utc(2026, 5, 1 + index)).toISOString(),
+    label: `Fictional event ${index}`
+  }));
+  const handle = renderEventRug(container, { data, interval: "day", labelAngle: -45 });
+  const labels = findAllByClass(container, "tl-tick-label");
+  assert.ok(labels.length >= 2);
+  const anchors = new Set(labels.map((label) => label.getAttribute("text-anchor")));
+  assert.deepEqual([...anchors], ["end"]);
+  const angles = new Set(
+    labels.map((label) => label.getAttribute("transform").match(/^rotate\((-?\d+(?:\.\d+)?) /)[1])
+  );
+  assert.deepEqual([...angles], ["-45"]);
+  assert.ok(labels.every((label) => label.getAttribute("aria-label")));
+  handle.update({ labelAngle: 0 });
+  const flat = findAllByClass(container, "tl-tick-label");
+  assert.ok(flat.every((label) => !label.getAttribute("transform")));
+  assert.equal(flat[0].getAttribute("text-anchor"), "start");
+  assert.equal(flat.at(-1).getAttribute("text-anchor"), "end");
+  handle.update({ orientation: "vertical", labelAngle: -90 });
+  assert.ok(findAllByClass(container, "tl-tick-label").every((label) => !label.getAttribute("transform")));
+  handle.destroy();
+});
+
+test("responsive ticks keep a uniform stride and measure in plot units", () => {
+  const domain = [utc(2026, 5, 4), utc(2026, 8, 31)];
+  const candidates = createTicks(domain, "week");
+  const picked = selectResponsiveTicks(candidates, {
+    domain,
+    interval: "week",
+    orientation: "horizontal",
+    renderedLength: 960,
+    measureLength: 400,
+    labelAngle: -45
+  });
+  assert.ok(picked.length >= 3);
+  const scale = createTimeScale(domain, [0, 400]);
+  const gaps = picked.slice(1).map((tick, index) => scale(tick.value) - scale(picked[index].value));
+  const rhythm = gaps.slice(1);
+  const spread = Math.max(...rhythm) - Math.min(...rhythm);
+  assert.ok(spread < 1, `expected a uniform stride, saw gaps ${gaps.join(",")}`);
+  assert.ok(gaps[0] >= rhythm[0] - 1, "leading remainder gap must not be tighter than the rhythm");
+
+  const roomy = selectResponsiveTicks(candidates, {
+    domain,
+    interval: "week",
+    orientation: "horizontal",
+    renderedLength: 960,
+    measureLength: 960
+  });
+  const cramped = selectResponsiveTicks(candidates, {
+    domain,
+    interval: "week",
+    orientation: "horizontal",
+    renderedLength: 960,
+    measureLength: 240
+  });
+  assert.ok(cramped.length < roomy.length, "measureLength must drive overlap math, not renderedLength");
+  assert.equal(roomy[0].label, cramped[0].label, "renderedLength alone must drive the abbreviation tier");
+});
+
+test("every datetime renderer draws uniformly rotated date ticks", () => {
+  const document = new FakeDocument();
+  const rotating = components.filter((component) => component.supportsTickAngle);
+  assert.equal(rotating.length, 9);
+  rotating.forEach((component) => {
+    const container = new FakeElement(document);
+    const handle = rendererRegistry[component.id](container, {
+      data: catalogFixture(component),
+      interval: component.interval,
+      labelAngle: -45
+    });
+    const labels = findAllByClass(container, "tl-tick-label").filter((label) => {
+      const className = label.getAttribute("class") || "";
+      return !className.includes("--weekday") && !className.includes("--month");
+    });
+    assert.ok(labels.length >= 2, `${component.id} drew ${labels.length} date labels`);
+    const angles = new Set(
+      labels.map((label) => (label.getAttribute("transform") || "").match(/rotate\((-?[\d.]+)/)?.[1])
+    );
+    const anchors = new Set(labels.map((label) => label.getAttribute("text-anchor")));
+    assert.deepEqual([...angles], ["-45"], `${component.id} mixed tick angles`);
+    assert.deepEqual([...anchors], ["end"], `${component.id} mixed text anchors`);
+    handle.destroy();
+  });
+  components
+    .filter((component) => !component.supportsTickAngle)
+    .forEach((component) => {
+      assert.equal(
+        getRendererControlMetadata(component).appearance.some((control) => control.name === "labelAngle"),
+        false,
+        `${component.id} must not expose an angle control`
+      );
+    });
+});
+
+test("relative journeys label an elapsed-day axis instead of a fixed origin", () => {
+  const document = new FakeDocument();
+  const container = new FakeElement(document);
+  const handle = renderRelativeJourneys(container, { data: syntheticJourneys });
+  const labels = findAllByClass(container, "tl-tick-label").map((label) => label.textContent);
+  assert.ok(labels.length >= 3, `expected an elapsed-day axis, saw ${labels.join(",")}`);
+  assert.ok(
+    labels.every((label) => /^Day \d+$/.test(label)),
+    `elapsed-day labels must read "Day N", saw ${labels.join(",")}`
+  );
+  assert.equal(labels[0], "Day 0", "the axis must start at the shared origin");
+  const days = labels.map((label) => Number(label.slice(4)));
+  assert.deepEqual(days, [...days].sort((a, b) => a - b), "elapsed days must ascend");
+  assert.equal(new Set(days).size, days.length, "elapsed-day labels must be distinct");
+  handle.destroy();
+});
+
+test("calendar renderers without an explicit interval still snap to whole weeks", () => {
+  const document = new FakeDocument();
+  const container = new FakeElement(document);
+  // lifecycle-ranges builds its own scale and passes no interval, so the axis has
+  // to infer "day" candidates and land on a weekly rhythm rather than an
+  // arbitrary stride that drifts across weekdays.
+  const handle = renderLifecycleRanges(container, { data: syntheticRanges });
+  const labels = findAllByClass(container, "tl-tick-label").filter(
+    (label) => !/tl-tick-label--(weekday|month)/.test(label.getAttribute("class") || "")
+  );
+  assert.ok(labels.length >= 4, `expected a labelled date axis, saw ${labels.length}`);
+  const days = labels.map((label) => Number(label.getAttribute("data-tick-time")));
+  const gaps = days.slice(2).map((value, index) => Math.round((value - days[index + 1]) / 86400000));
+  assert.ok(gaps.length > 0, "expected at least one interior gap to measure");
+  assert.equal(
+    new Set(gaps).size,
+    1,
+    `interior ticks must share one stride, saw ${gaps.join(",")} days`
+  );
+  assert.equal(gaps[0] % 7, 0, `a day axis must snap to whole weeks, saw ${gaps[0]} days`);
+  handle.destroy();
+});
+
+test("label angle survives orientation round trips without leaking to siblings", () => {
+  const document = new FakeDocument();
+  const rotated = new FakeElement(document);
+  const untouched = new FakeElement(document);
+  const data = Array.from({ length: 10 }, (_, index) => ({
+    id: `event-${index}`,
+    time: new Date(utc(2026, 5, 1 + index)).toISOString(),
+    label: `Fictional event ${index}`
+  }));
+  const handle = renderEventRug(rotated, { data, interval: "day", labelAngle: -90 });
+  const neighbor = renderEventRug(untouched, { data, interval: "day" });
+  assert.deepEqual([...new Set(tickAngles(rotated))], ["-90"]);
+  assert.deepEqual([...new Set(tickAngles(untouched))], ["-45"]);
+  handle.update({ orientation: "vertical" });
+  assert.deepEqual([...new Set(tickAngles(rotated))], ["0"], "vertical labels stay horizontal");
+  handle.update({ orientation: "horizontal" });
+  assert.deepEqual([...new Set(tickAngles(rotated))], ["-90"], "angle restores on return to horizontal");
+  assert.deepEqual([...new Set(tickAngles(untouched))], ["-45"], "sibling renderer never changed");
+  handle.destroy();
+  neighbor.destroy();
+});
+
+test("rotated labels stay inside the drawing surface at every width", () => {
+  [960, 640, 420].forEach((width) => {
+    const document = new FakeDocument({}, width);
+    const container = new FakeElement(document);
+    const handle = renderEventRug(container, {
+      data: syntheticEvents,
+      interval: "week",
+      labelAngle: -45
+    });
+    const labels = findAllByClass(container, "tl-tick-label");
+    assert.ok(labels.length >= 2, `width ${width} drew ${labels.length} labels`);
+    labels.forEach((label) => {
+      const x = Number(label.getAttribute("x"));
+      // Rotated labels are anchored at their end, so each one reaches back from
+      // its tick by the horizontal component of its footprint.
+      const reach = estimatedLabelWidth(label.textContent) * Math.cos(Math.PI / 4);
+      assert.ok(x - reach >= 0, `width ${width}: "${label.textContent}" overflows the left edge`);
+      assert.ok(x <= 960, `width ${width}: "${label.textContent}" overflows the right edge`);
+    });
+    handle.destroy();
+  });
+});
+
+test("overview detail redraws its detail ticks when the viewport pans", () => {
+  const document = new FakeDocument();
+  const container = new FakeElement(document);
+  const handle = renderOverviewDetail(container, {
+    data: syntheticEvents,
+    interval: "week",
+    labelAngle: -45
+  });
+  const detailTicks = findByClass(container, "tl-axis-ticks");
+  assert.ok(detailTicks, "detail ticks are grouped for redraw");
+  const before = detailTicks.children.map((node) => node.getAttribute("x")).join(",");
+  assert.ok(before.length > 0, "detail axis starts with ticks");
+
+  const domain = [Date.parse(syntheticEvents[0].time), Date.parse(syntheticEvents.at(-1).time)];
+  const span = domain[1] - domain[0];
+  handle.update({ visibleRange: [domain[0] + span / 2, domain[0] + (span * 5) / 6] });
+
+  const after = findByClass(container, "tl-axis-ticks")
+    .children.map((node) => node.getAttribute("x"))
+    .join(",");
+  assert.notEqual(after, before, "moving the viewport redraws the detail axis");
+
+  // The overview strip and the detail axis must agree on one angle and anchor.
+  const angles = new Set(tickAngles(container));
+  const anchors = new Set(
+    findAllByClass(container, "tl-tick-label").map((label) => label.getAttribute("text-anchor"))
+  );
+  assert.deepEqual([...angles], ["-45"], "overview and detail axes share one angle");
+  assert.deepEqual([...anchors], ["end"], "overview and detail axes share one anchor");
+  handle.destroy();
+});
+
+test("lollipop geometry stays finite and within its derived plot space", () => {
+  const document = new FakeDocument();
+  const data = [
+    { id: "a", time: new Date(utc(2026, 5, 4)).toISOString(), label: "Paper moon", value: 2 },
+    { id: "b", time: new Date(utc(2026, 5, 18)).toISOString(), label: "Clockwork cloud", value: 10 }
+  ];
+  ["horizontal", "vertical"].forEach((orientation) => {
+    [["day", "count"], ["week", "sum"], ["month", "average"]].forEach(([interval, reducer]) => {
+      const container = new FakeElement(document);
+      const handle = renderVolumeLollipop(container, {
+        data,
+        orientation,
+        interval,
+        reducer,
+        aggregateHeadSize: 20
+      });
+      const chart = findByClass(container, "tl-chart");
+      const [, , viewBoxWidth, viewBoxHeight] = chart.getAttribute("viewBox").split(/\s+/).map(Number);
+      const stems = findAllByClass(container, "tl-lollipop-stem");
+      const heads = findAllByClass(container, "tl-lollipop-head");
+      assert.ok(stems.length > 0);
+      [...stems, ...heads].forEach((node) => {
+        [...node.attributes.values()].forEach((value) => {
+          if (/^-?\d+(?:\.\d+)?$/.test(value)) assert.ok(Number.isFinite(Number(value)));
+        });
+      });
+      heads.forEach((head) => {
+        assert.ok(Number(head.getAttribute("cx")) >= 0 && Number(head.getAttribute("cx")) <= viewBoxWidth);
+        assert.ok(Number(head.getAttribute("cy")) >= 0 && Number(head.getAttribute("cy")) <= viewBoxHeight);
+      });
+      handle.destroy();
+    });
+  });
+  [[], data.slice(0, 1)].forEach((scenario) => {
+    const container = new FakeElement(document);
+    const handle = renderVolumeLollipop(container, { data: scenario, interval: "month" });
+    assert.ok(findByClass(container, "tl-chart"));
+    findAllByClass(container, "tl-lollipop-head").forEach((head) => {
+      assert.ok(Number.isFinite(Number(head.getAttribute("cx"))));
+      assert.ok(Number.isFinite(Number(head.getAttribute("cy"))));
+    });
+    handle.destroy();
+  });
 });
 
 test("marker offsets create connectors without changing the timestamp coordinate", () => {
@@ -449,15 +889,38 @@ test("package metadata is build-free, dependency-free, and export-ready", () => 
   assert.ok(manifest.files.includes("CONTRIBUTING.md"));
 });
 
-test("catalog registers twelve honest example routes and hides the retired keyboard example", () => {
-  const catalog = fs.readFileSync(path.join(root, "src", "catalog-data.js"), "utf8");
-  assert.equal((catalog.match(/exportName:/g) || []).length, 12);
+test("catalog mounts all twelve full renderers without card or preview wrappers", () => {
+  const catalogData = fs.readFileSync(path.join(root, "src", "catalog-data.js"), "utf8");
+  const catalog = fs.readFileSync(path.join(root, "src", "catalog.js"), "utf8");
+  const styles = fs.readFileSync(path.join(root, "src", "timeline.css"), "utf8");
+  const controls = fs.readFileSync(path.join(root, "src", "controls.js"), "utf8");
+  assert.equal((catalogData.match(/exportName:/g) || []).length, 12);
   components.forEach((component) => {
     assert.ok(fs.existsSync(path.join(root, "examples", component.file)), component.file);
   });
-  assert.doesNotMatch(catalog, /keyboard-navigation/);
+  assert.match(catalog, /components\.forEach/);
+  assert.match(catalog, /rendererRegistry\[component\.id\]/);
+  assert.match(catalog, /tl-catalog-visualization/);
+  assert.match(catalog, /createRendererControls/);
+  assert.doesNotMatch(catalog, /tl-card|preview|thumbnail/i);
+  assert.doesNotMatch(styles, /min-width:\s*34rem/);
+  assert.doesNotMatch(styles, /\.tl-card\b/);
+  assert.doesNotMatch(controls, /tl-customize|<details/);
+  assert.match(controls, /labelAngle/);
+  assert.doesNotMatch(catalogData, /keyboard-navigation/);
   const retired = fs.readFileSync(path.join(root, "examples", "keyboard-navigation.html"), "utf8");
   assert.match(retired, /Keyboard parity is now built into every interactive renderer/);
+  const landing = fs.readFileSync(path.join(root, "index.html"), "utf8");
+  assert.doesNotMatch(landing, /tl-eyebrow|tl-notice|tl-lede/);
+  assert.doesNotMatch(styles, /\.tl-chart\s*\{[^}]*min-width/s);
+  assert.doesNotMatch(styles, /\.tl-catalog-visualization\s*\{[^}]*overflow:\s*hidden/s);
+  assert.doesNotMatch(catalog, /tl-controls-host|class="tl-visualization"/);
+  assert.match(catalog, /<header class="tl-component-heading">[\s\S]*<\/header>\s*<form class="tl-renderer-controls">/);
+  const examplePage = fs.readFileSync(path.join(root, "src", "example-page.js"), "utf8");
+  assert.doesNotMatch(examplePage, /tl-code-disclosure|<details/);
+  assert.match(examplePage, /tl-reference/);
+  assert.match(controls, /tl-control-group/);
+  assert.match(styles, /grid-template-rows:\s*subgrid/);
 });
 
 test("all local HTML references resolve under the project site", () => {

@@ -27,6 +27,8 @@ timeline.destroy();
 
 Every renderer returns `{ update, setSelection, getState, destroy }`. Inputs are copied rather than mutated, state survives updates and orientation changes when its IDs remain valid, and `destroy()` removes generated DOM, listeners, and observers.
 
+Appearance is local to each renderer. Options such as `axisColor`, `axisWidth`, `markerColor`, `markerRadius`, `rugColor`, `rugWidth`, `rugLength`, `aggregateColor`, `aggregateStemWidth`, `aggregateBarWidth`, `aggregateHeadSize`, and `labelGap` are clamped where numeric and never mutate global CSS.
+
 ## Renderers
 
 | Export | Pattern |
@@ -47,6 +49,7 @@ Every renderer returns `{ update, setSelection, getState, destroy }`. Inputs are
 ## Core guarantees
 
 - UTC day, Monday-based week, month, and custom intervals
+- Responsive calendar ticks that abbreviate and thin without changing their UTC positions
 - Zero-filled count, sum, average, and custom aggregation
 - Finite geometry for empty, single, identical, reversed, dense, and capped inputs
 - Marker centers exactly intersect the axis center when `markerAxisOffset` is `0`

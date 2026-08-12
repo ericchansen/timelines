@@ -73,6 +73,25 @@ export interface RendererOptions<T = TimelineEvent> {
   markerAxisOffset?: number;
   markerRadius?: number;
   labelGap?: number;
+  /**
+   * Horizontal datetime tick-label angle, clamped from -90 through 0 degrees.
+   * Every tick on an axis shares one angle and one `text-anchor`. Forced to 0
+   * in vertical orientation and honored by the nine renderers that draw a
+   * datetime tick axis. `relative-journeys` (elapsed-day axis),
+   * `calendar-heatmap` (weekday/month gutter), and `semantic-feed` (no axis)
+   * deliberately ignore it.
+   */
+  labelAngle?: number;
+  axisColor?: string;
+  axisWidth?: number;
+  rugColor?: string;
+  rugWidth?: number;
+  rugLength?: number;
+  markerColor?: string;
+  aggregateColor?: string;
+  aggregateStemWidth?: number;
+  aggregateBarWidth?: number;
+  aggregateHeadSize?: number;
   maxLabelLanes?: number;
   selectedId?: string | null;
   ariaLabel?: string;
@@ -163,6 +182,61 @@ export function createTicks(
   domain: readonly [TimeValue, TimeValue],
   interval?: IntervalName | CustomInterval
 ): Array<{ value: number; label: string }>;
+export function formatResponsiveTick(
+  value: TimeValue,
+  interval?: IntervalName | "custom",
+  renderedLength?: number,
+  fallback?: string
+): string;
+export function estimatedLabelWidth(label: string): number;
+export function selectResponsiveTicks(
+  candidates: readonly Array<{ value: TimeValue; label: string }>,
+  options?: {
+    orientation?: Orientation;
+    /** Rendered CSS length of the axis. Selects the label abbreviation tier. */
+    renderedLength?: number;
+    /**
+     * Plot span in SVG user units. Overlap is measured against this so label
+     * width estimates and tick positions share one coordinate space. Defaults
+     * to `renderedLength`.
+     */
+    measureLength?: number;
+    interval?: IntervalName | "custom";
+    labelAngle?: number;
+    domain?: readonly [TimeValue, TimeValue];
+  }
+): Array<{
+  value: TimeValue;
+  label: string;
+  fullLabel: string;
+  index: number;
+  rotated: boolean;
+  labelAngle: number;
+}>;
+export const APPEARANCE_OPTIONS: Readonly<Record<
+  "axisWidth" | "rugWidth" | "rugLength" | "markerRadius" | "markerAxisOffset" |
+  "aggregateStemWidth" | "aggregateBarWidth" | "aggregateHeadSize" | "labelGap",
+  Readonly<{ minimum: number; maximum: number; fallback: number }>
+>>;
+export function normalizeAppearanceOptions(options?: Partial<RendererOptions>): {
+  axisColor: string | null;
+  axisWidth: number;
+  rugColor: string | null;
+  rugWidth: number;
+  rugLength: number;
+  markerColor: string | null;
+  markerRadius: number;
+  markerAxisOffset: number;
+  aggregateColor: string | null;
+  aggregateStemWidth: number;
+  aggregateBarWidth: number;
+  aggregateHeadSize: number;
+  labelGap: number;
+};
+export function applyAppearanceStyles(
+  element: HTMLElement | SVGElement,
+  appearance: ReturnType<typeof normalizeAppearanceOptions>
+): void;
 export function aggregateTimeBuckets<T>(
   items: readonly T[],
   options?: {
