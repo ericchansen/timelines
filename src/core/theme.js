@@ -16,7 +16,10 @@ export function attachThemeToggle(button, {
   function sync() {
     root.dataset.theme = currentTheme;
     button.setAttribute("aria-pressed", String(currentTheme === "dark"));
-    if (label) label.textContent = currentTheme === "dark" ? "Light theme" : "Dark theme";
+    const action = currentTheme === "dark" ? "Light theme" : "Dark theme";
+    button.setAttribute("aria-label", action);
+    button.setAttribute("title", action);
+    if (label) label.textContent = action;
   }
 
   function toggle() {

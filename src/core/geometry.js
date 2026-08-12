@@ -28,6 +28,8 @@ export function markerGeometry(position, options = {}) {
 export function layoutLabels(items, options = {}) {
   const orientation = options.orientation === "vertical" ? "vertical" : "horizontal";
   const gap = Math.max(0, finite(options.labelGap, 18));
+  const positiveGap = Math.max(gap, finite(options.positiveGap, gap));
+  const negativeGap = Math.max(gap, finite(options.negativeGap, gap));
   const laneSize = Math.max(1, finite(options.laneSize, 34));
   const maxLanes = Math.max(1, Math.floor(finite(options.maxLanes, 4)));
   const occupied = new Map();
@@ -39,7 +41,8 @@ export function layoutLabels(items, options = {}) {
       const width = Math.max(1, finite(item.width, 120));
       const height = Math.max(1, finite(item.height, 30));
       const primarySize = orientation === "horizontal" ? width : height;
-      const start = finite(item.position) - primarySize / 2;
+      const labelPosition = finite(item.labelPosition, finite(item.position));
+      const start = labelPosition - primarySize / 2;
       const end = start + primarySize;
       const positive = orientation === "horizontal" ? "below" : "right";
       const negative = orientation === "horizontal" ? "above" : "left";
@@ -55,15 +58,16 @@ export function layoutLabels(items, options = {}) {
       lanes[lane] = Math.max(lanes[lane], end);
       occupied.set(side, lanes);
       const direction = side === positive ? 1 : -1;
+      const sideGap = side === positive ? positiveGap : negativeGap;
       const markerCross = finite(item.markerCross, finite(options.axis, 0));
-      const cross = markerCross + direction * (gap + lane * laneSize + (orientation === "horizontal" ? height : width) / 2);
+      const cross = markerCross + direction * (sideGap + lane * laneSize + (orientation === "horizontal" ? height : width) / 2);
 
       return {
         ...item,
         lane,
         side,
-        x: orientation === "horizontal" ? finite(item.position) : cross,
-        y: orientation === "horizontal" ? cross : finite(item.position),
+        x: orientation === "horizontal" ? labelPosition : cross,
+        y: orientation === "horizontal" ? cross : labelPosition,
         width,
         height
       };

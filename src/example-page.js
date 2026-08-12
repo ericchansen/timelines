@@ -1,32 +1,24 @@
 import { components, defaultCommands } from "./catalog-data.js";
-import { attachThemeToggle } from "./core/theme.js";
 import { createRendererControls } from "./controls.js";
+import { demoRendererOptions } from "./demo-options.js";
 import { rendererRegistry } from "./renderers.js";
-import {
-  denseSyntheticEvents,
-  syntheticEvents,
-  syntheticJourneys,
-  syntheticRanges
-} from "./fixtures/synthetic-data.js";
+import { componentHeadingMarkup, mountSiteHeader } from "./site-ui.js";
 
 const componentId = document.body.dataset.renderer;
 const component = components.find((item) => item.id === componentId);
 if (!component) throw new Error(`Unknown timeline component: ${componentId}`);
+const params = new URLSearchParams(location.search);
+document.documentElement.dataset.theme = params.get("theme") || document.documentElement.dataset.theme || "";
 
 document.body.innerHTML = `
   <main class="tl-page tl-example-layout">
-    <header class="tl-example-header">
-      <p class="tl-breadcrumb"><a href="../index.html">Timelines</a> / Component</p>
-      <nav class="tl-toolbar" aria-label="Example">
-        <button class="tl-button" id="theme-toggle" type="button" aria-pressed="false">
-          <span aria-hidden="true">◐</span><span data-theme-label>Theme</span>
-        </button>
-        <a href="../docs/api.html">API</a>
-        <a href="../src/renderers.js">Source</a>
-      </nav>
-      <h1 id="example-title"></h1>
-      <p class="tl-lede" id="example-summary"></p>
-    </header>
+    ${componentHeadingMarkup(component, {
+      headingLevel: "h1",
+      headingId: "example-title",
+      linkHref: "../index.html",
+      linkText: "Back to catalog",
+      linkDirection: "back"
+    })}
 
     <h2 class="tl-visually-hidden" id="visualization-title">Live visualization</h2>
     <form class="tl-renderer-controls" id="example-controls" aria-labelledby="visualization-title"></form>
@@ -65,29 +57,7 @@ document.body.innerHTML = `
     <ul></ul>
   </aside>
 `;
-
-function standardData() {
-  if (component.dataKind === "ranges") return syntheticRanges;
-  if (component.dataKind === "journeys") return syntheticJourneys;
-  return syntheticEvents;
-}
-
-function scenarioData(name) {
-  const data = standardData();
-  if (name === "empty") return [];
-  if (name === "sparse") return data.slice(0, 3);
-  if (name === "capped") return data.slice(0, 6);
-  if (name === "dense" && component.dataKind !== "ranges" && component.dataKind !== "journeys") {
-    return denseSyntheticEvents;
-  }
-  if (name === "long") {
-    return data.map((item) => ({
-      ...item,
-      label: `${item.label} — an intentionally long fictional label used to verify collision handling`
-    }));
-  }
-  return data;
-}
+const siteHeader = mountSiteHeader(document.querySelector("main.tl-page"), { basePath: "../" });
 
 function codeSample() {
   const fixture =
@@ -151,8 +121,6 @@ function optionRows(options) {
 }
 
 document.title = `${component.title} · Timeline components`;
-document.querySelector("#example-title").textContent = component.title;
-document.querySelector("#example-summary").textContent = component.summary;
 document.querySelector("#example-use").textContent = component.use;
 fillTable("#example-shape", dataShapeRows(component.dataShape));
 fillTable("#example-options", optionRows(component.options));
@@ -167,32 +135,14 @@ copyButton.addEventListener("click", async () => {
   }, 1500);
 });
 
-const params = new URLSearchParams(location.search);
-document.documentElement.dataset.theme = params.get("theme") || document.documentElement.dataset.theme || "";
 const target = document.querySelector("#example-visualization");
-
-function rendererOptions(values) {
-  return {
-    ...values,
-    data: scenarioData(values.scenario),
-    orientation: values.orientation || "horizontal",
-    interval: values.interval || component.interval,
-    reducer: values.reducer || (component.id === "volume-lollipop" ? "sum" : "count"),
-    showEventRug: true,
-    showDensityTrack: true,
-    ariaLabel: component.title
-  };
-}
 
 let handle;
 const controls = createRendererControls(document.querySelector("#example-controls"), {
   component,
-  onChange: (values) => handle?.update(rendererOptions(values))
+  onChange: (values) => handle?.update(demoRendererOptions(component, values))
 });
-handle = rendererRegistry[component.id](target, rendererOptions(controls.getValues()));
-
-const themeButton = document.querySelector("#theme-toggle");
-const removeThemeToggle = attachThemeToggle(themeButton);
+handle = rendererRegistry[component.id](target, demoRendererOptions(component, controls.getValues()));
 
 const keyboardTrigger = document.querySelector("#keyboard-trigger");
 const keyboardPanel = document.querySelector("#keyboard-panel");
@@ -226,7 +176,7 @@ document.addEventListener("keydown", (event) => {
 });
 
 window.addEventListener("pagehide", () => {
-  removeThemeToggle();
+  siteHeader.destroy();
   controls.destroy();
   handle.destroy();
 }, { once: true });

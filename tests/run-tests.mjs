@@ -33,6 +33,11 @@ import { createRenderer } from "../src/core/renderer.js";
 import { components } from "../src/catalog-data.js";
 import { clampControlValue, getRendererControlMetadata } from "../src/controls.js";
 import {
+  dataForComponent,
+  demoRendererOptions,
+  scenarioDataFor
+} from "../src/demo-options.js";
+import {
   syntheticEvents,
   syntheticJourneys,
   syntheticRanges
@@ -148,9 +153,7 @@ function pointerEvent(type, properties) {
 }
 
 function catalogFixture(component) {
-  if (component.dataKind === "ranges") return syntheticRanges;
-  if (component.dataKind === "journeys") return syntheticJourneys;
-  return syntheticEvents;
+  return dataForComponent(component);
 }
 
 function tickAngles(container) {
@@ -334,6 +337,34 @@ test("appearance options and control inputs clamp to finite scoped values", () =
   assert.equal(clampControlValue(width, "not-a-number"), 1.25);
 });
 
+test("catalog and detail pages share demo scenarios and renderer options", () => {
+  const eventComponent = components.find((component) => component.id === "proportional-run");
+  const rangeComponent = components.find((component) => component.id === "lifecycle-ranges");
+  assert.equal(scenarioDataFor(eventComponent, "empty").length, 0);
+  assert.equal(scenarioDataFor(eventComponent, "sparse").length, 3);
+  assert.equal(scenarioDataFor(rangeComponent, "dense"), syntheticRanges);
+  assert.match(scenarioDataFor(eventComponent, "long")[0].label, /intentionally long fictional label/);
+  assert.deepEqual(
+    demoRendererOptions(eventComponent, { scenario: "standard", interval: "", orientation: "" }),
+    {
+      scenario: "standard",
+      interval: eventComponent.interval,
+      orientation: "horizontal",
+      data: syntheticEvents,
+      showEventRug: true,
+      showDensityTrack: true,
+      reducer: "count",
+      ariaLabel: eventComponent.title
+    }
+  );
+
+  const catalog = fs.readFileSync(path.join(root, "src", "catalog.js"), "utf8");
+  const examplePage = fs.readFileSync(path.join(root, "src", "example-page.js"), "utf8");
+  assert.match(catalog, /import \{ demoRendererOptions \} from "\.\/demo-options\.js"/);
+  assert.match(examplePage, /import \{ demoRendererOptions \} from "\.\/demo-options\.js"/);
+  assert.doesNotMatch(catalog + examplePage, /function (?:standardData|scenarioData|rendererOptions|optionsFor)\b/);
+});
+
 test("calendar heatmap rows use the core Monday-based week contract", () => {
   const document = new FakeDocument();
   const container = new FakeElement(document);
@@ -344,9 +375,14 @@ test("calendar heatmap rows use the core Monday-based week contract", () => {
     ]
   });
   const cells = findAllByClass(container, "tl-calendar-cell");
+  const positions = cells.map((cell) =>
+    cell.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/).slice(1).map(Number)
+  );
   assert.equal(cells.length, 7);
-  assert.equal(cells[0].getAttribute("transform"), "translate(110 34)");
-  assert.equal(cells[6].getAttribute("transform"), "translate(110 238)");
+  assert.equal(positions[0][0], positions[6][0]);
+  assert.equal(positions[0][1], 34);
+  assert.equal(positions[6][1] - positions[0][1], 6 * 34);
+  assert.equal(findByClass(container, "tl-chart").getAttribute("viewBox"), "0 0 620 300");
   handle.destroy();
 });
 
@@ -366,6 +402,31 @@ test("calendar heatmap labels its weekday gutter and month columns", () => {
     "every calendar cell needs an accessible title"
   );
   handle.destroy();
+});
+
+test("aggregate charts expose values and stacked categories", () => {
+  const document = new FakeDocument();
+  const histogramContainer = new FakeElement(document);
+  const histogram = rendererRegistry["density-histogram"](histogramContainer, {
+    data: syntheticEvents,
+    interval: "week"
+  });
+  assert.ok(findAllByClass(histogramContainer, "tl-value-label").length > 0);
+  histogram.destroy();
+
+  const stackedContainer = new FakeElement(document);
+  const stacked = rendererRegistry["stacked-change-plot"](stackedContainer, {
+    data: syntheticEvents,
+    interval: "week"
+  });
+  const legendLabels = findAllByClass(stackedContainer, "tl-legend-label").map((label) => label.textContent);
+  assert.deepEqual(
+    legendLabels,
+    [...new Set(syntheticEvents.map((event) => event.type))].map((type) =>
+      String(type).replace(/[-_]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase())
+    )
+  );
+  stacked.destroy();
 });
 
 test("default marker centers exactly equal axis centers in both orientations", () => {
@@ -697,6 +758,60 @@ test("collision-aware labels use stable lanes and honor placement overrides", ()
   assert.equal(labels[2].side, "below");
   assert.ok(labels[0].y < 50);
   assert.ok(labels[2].y > 50);
+
+  const reserved = layoutLabels(
+    [{ id: "d", position: 100, markerCross: 50, width: 100, height: 30, placement: "below" }],
+    { orientation: "horizontal", labelGap: 20, positiveGap: 60 }
+  );
+  assert.equal(reserved[0].y, 125);
+
+  const shifted = layoutLabels(
+    [{ id: "e", position: 20, labelPosition: 80, markerCross: 50, width: 100, height: 30 }],
+    { orientation: "horizontal" }
+  );
+  assert.equal(shifted[0].x, 80);
+});
+
+test("horizontal event timelines crop their viewBox to occupied label lanes", () => {
+  const document = new FakeDocument();
+  const container = new FakeElement(document);
+  const handle = rendererRegistry["proportional-run"](container, {
+    data: syntheticEvents,
+    interval: "week"
+  });
+  const chart = findByClass(container, "tl-chart");
+  const [, minY, , height] = chart.getAttribute("viewBox").split(/\s+/).map(Number);
+  assert.ok(minY > 0);
+  assert.ok(height < 360);
+  handle.destroy();
+});
+
+test("narrow event timelines keep every label inside the viewBox", () => {
+  const document = new FakeDocument({}, 390);
+  const container = new FakeElement(document);
+  const handle = rendererRegistry["proportional-run"](container, {
+    data: syntheticEvents,
+    interval: "week"
+  });
+  const labels = findAllByClass(container, "tl-event-label").map((label) => {
+    const [, x, y] = label.getAttribute("transform").match(/translate\(([-\d.]+) ([-\d.]+)\)/);
+    const width = Number(label.children.find((child) => child.name === "rect").getAttribute("width"));
+    assert.ok(Number(x) >= 0, `label starts at ${x}`);
+    assert.ok(Number(x) + width <= 960, `label ends at ${Number(x) + width}`);
+    return { x: Number(x), y: Number(y), width };
+  });
+  labels.forEach((label, index) => {
+    labels.slice(index + 1).forEach((candidate) => {
+      if (candidate.y !== label.y) return;
+      assert.ok(
+        label.x + label.width + 5 <= candidate.x || candidate.x + candidate.width + 5 <= label.x,
+        `labels overlap at y=${label.y}`
+      );
+    });
+  });
+  const [, minY] = findByClass(container, "tl-chart").getAttribute("viewBox").split(/\s+/).map(Number);
+  assert.ok(minY < 0, "narrow label lanes can extend above the original drawing surface");
+  handle.destroy();
 });
 
 test("range pan and resize clamp while enforcing minimum duration", () => {
@@ -761,10 +876,14 @@ test("theme toggles start from the effective preference and clean up", () => {
   });
   assert.equal(root.dataset.theme, "dark");
   assert.equal(button.getAttribute("aria-pressed"), "true");
+  assert.equal(button.getAttribute("aria-label"), "Light theme");
+  assert.equal(button.getAttribute("title"), "Light theme");
   assert.equal(label.textContent, "Light theme");
   button.dispatchEvent(new Event("click"));
   assert.equal(root.dataset.theme, "light");
   assert.equal(button.getAttribute("aria-pressed"), "false");
+  assert.equal(button.getAttribute("aria-label"), "Dark theme");
+  assert.equal(button.getAttribute("title"), "Dark theme");
   assert.equal(label.textContent, "Dark theme");
   remove();
   button.dispatchEvent(new Event("click"));
@@ -894,6 +1013,7 @@ test("catalog mounts all twelve full renderers without card or preview wrappers"
   const catalog = fs.readFileSync(path.join(root, "src", "catalog.js"), "utf8");
   const styles = fs.readFileSync(path.join(root, "src", "timeline.css"), "utf8");
   const controls = fs.readFileSync(path.join(root, "src", "controls.js"), "utf8");
+  const siteUi = fs.readFileSync(path.join(root, "src", "site-ui.js"), "utf8");
   assert.equal((catalogData.match(/exportName:/g) || []).length, 12);
   components.forEach((component) => {
     assert.ok(fs.existsSync(path.join(root, "examples", component.file)), component.file);
@@ -912,15 +1032,52 @@ test("catalog mounts all twelve full renderers without card or preview wrappers"
   assert.match(retired, /Keyboard parity is now built into every interactive renderer/);
   const landing = fs.readFileSync(path.join(root, "index.html"), "utf8");
   assert.doesNotMatch(landing, /tl-eyebrow|tl-notice|tl-lede/);
+  assert.doesNotMatch(landing, /<h1>\s*Timelines\s*<\/h1>|tl-site-header/);
+  assert.match(landing, /<main class="tl-page" aria-label="Timeline renderer catalog">/);
+  assert.doesNotMatch(landing, /tl-toolbar|theme-toggle|data-theme-toggle/);
+  assert.match(siteUi, /data-theme-toggle/);
+  assert.match(siteUi, /aria-label="Dark theme"[^>]*title="Dark theme"/);
   assert.doesNotMatch(styles, /\.tl-chart\s*\{[^}]*min-width/s);
   assert.doesNotMatch(styles, /\.tl-catalog-visualization\s*\{[^}]*overflow:\s*hidden/s);
+  assert.match(styles, /\.tl-catalog-section\s*\{[^}]*gap:\s*var\(--tl-space-2\)[^}]*padding-block:\s*clamp\(1rem,\s*1\.8vw,\s*1\.5rem\)/s);
+  assert.match(styles, /\.tl-site-toolbar \.tl-button\s*\{[^}]*min-height:\s*2rem/s);
+  assert.doesNotMatch(styles, /\.tl-catalog-section\s*\+\s*\.tl-catalog-section\s*\{[^}]*border/s);
+  assert.doesNotMatch(styles, /\.tl-renderer-controls\s*\{[^}]*border/s);
+  assert.doesNotMatch(styles, /\.tl-control-group\s*\+\s*\.tl-control-group\s*\{[^}]*border/s);
+  assert.match(styles, /\.tl-control-input--color\s*\{[^}]*width:\s*var\(--tl-hit-target\)[^}]*padding:\s*0\.625rem/s);
   assert.doesNotMatch(catalog, /tl-controls-host|class="tl-visualization"/);
-  assert.match(catalog, /<header class="tl-component-heading">[\s\S]*<\/header>\s*<form class="tl-renderer-controls">/);
+  assert.match(catalog, /componentHeadingMarkup/);
   const examplePage = fs.readFileSync(path.join(root, "src", "example-page.js"), "utf8");
   assert.doesNotMatch(examplePage, /tl-code-disclosure|<details/);
   assert.match(examplePage, /tl-reference/);
   assert.match(controls, /tl-control-group/);
   assert.match(styles, /grid-template-rows:\s*subgrid/);
+});
+
+test("catalog, detail, and documentation pages mount one shared site header", () => {
+  const catalog = fs.readFileSync(path.join(root, "src", "catalog.js"), "utf8");
+  const examplePage = fs.readFileSync(path.join(root, "src", "example-page.js"), "utf8");
+  const docs = fs.readFileSync(path.join(root, "src", "docs.js"), "utf8");
+  const siteUi = fs.readFileSync(path.join(root, "src", "site-ui.js"), "utf8");
+  const styles = fs.readFileSync(path.join(root, "src", "timeline.css"), "utf8");
+  assert.match(siteUi, /export function mountSiteHeader/);
+  assert.match(siteUi, /class="tl-toolbar tl-site-toolbar" aria-label="Site"/);
+  assert.match(catalog, /mountSiteHeader\(page\)/);
+  assert.match(examplePage, /mountSiteHeader\(document\.querySelector\("main\.tl-page"\)/);
+  assert.match(examplePage, /linkDirection: "back"/);
+  assert.match(siteUi, /tl-detail-link tl-detail-link--back/);
+  assert.match(docs, /mountSiteHeader\(page, \{ basePath: "\.\.\/" \}\)/);
+  assert.doesNotMatch(examplePage, /tl-example-header|tl-breadcrumb/);
+  assert.doesNotMatch(styles, /tl-catalog-toolbar|tl-example-header|tl-breadcrumb/);
+  assert.match(styles, /\.tl-site-header\s*\{/);
+
+  const documentationPages = fs.readdirSync(path.join(root, "docs"))
+    .filter((file) => file.endsWith(".html") && file !== "examples.html");
+  assert.equal(documentationPages.length, 7);
+  documentationPages.forEach((file) => {
+    const html = fs.readFileSync(path.join(root, "docs", file), "utf8");
+    assert.match(html, /<script type="module" src="\.\.\/src\/docs\.js"><\/script>/, file);
+  });
 });
 
 test("all local HTML references resolve under the project site", () => {

@@ -11,28 +11,28 @@ const scenarioOptions = Object.freeze([
 
 const appearanceControls = Object.freeze({
   axis: [
-    { name: "axisColor", label: "Axis color", type: "color", value: "#7b8385" },
+    { name: "axisColor", label: "Axis color", type: "color", value: "#8a93a3" },
     { name: "axisWidth", label: "Axis width", type: "range", step: 0.25 }
   ],
   rug: [
-    { name: "rugColor", label: "Rug mark color", type: "color", value: "#9c3d55" },
+    { name: "rugColor", label: "Rug mark color", type: "color", value: "#4c5dff" },
     { name: "rugWidth", label: "Rug mark width", type: "range", step: 0.25 },
     { name: "rugLength", label: "Rug mark length", type: "range", step: 1 }
   ],
   marker: [
-    { name: "markerColor", label: "Marker color", type: "color", value: "#9c3d55" },
+    { name: "markerColor", label: "Marker color", type: "color", value: "#4c5dff" },
     { name: "markerRadius", label: "Marker size", type: "range", step: 1 }
   ],
   offset: [
     { name: "markerAxisOffset", label: "Axis offset", type: "range", step: 1 }
   ],
   lollipop: [
-    { name: "aggregateColor", label: "Lollipop color", type: "color", value: "#286b69" },
+    { name: "aggregateColor", label: "Lollipop color", type: "color", value: "#00a57a" },
     { name: "aggregateStemWidth", label: "Stem width", type: "range", step: 0.5 },
     { name: "aggregateHeadSize", label: "Head size", type: "range", step: 1 }
   ],
   bar: [
-    { name: "aggregateColor", label: "Aggregate color", type: "color", value: "#286b69" },
+    { name: "aggregateColor", label: "Aggregate color", type: "color", value: "#00a57a" },
     { name: "aggregateBarWidth", label: "Bar width", type: "range", step: 2 }
   ],
   label: [
@@ -100,7 +100,7 @@ export function clampControlValue(control, value) {
 function controlMarkup(control, prefix) {
   const id = `${prefix}-${control.name}`;
   if (control.options) {
-    return `<label class="tl-control" for="${id}"><span class="tl-control-label">${control.label}</span>
+    return `<label class="tl-control tl-control--select" for="${id}"><span class="tl-control-label">${control.label}</span>
       <select class="tl-control-input" id="${id}" name="${control.name}">${control.options
         .map(([value, text]) => `<option value="${value}"${value === control.value ? " selected" : ""}>${text}</option>`)
         .join("")}</select></label>`;
@@ -113,14 +113,14 @@ function controlMarkup(control, prefix) {
     control.type === "range"
       ? `<output class="tl-control-readout" for="${id}">${control.value}</output>`
       : "";
-  return `<label class="tl-control"${control.horizontalOnly ? ' data-horizontal-only="true"' : ""} for="${id}">
+  return `<label class="tl-control tl-control--${control.type}"${control.horizontalOnly ? ' data-horizontal-only="true"' : ""} for="${id}">
     <span class="tl-control-label">${control.label}</span>
     <input class="tl-control-input tl-control-input--${control.type}" id="${id}" name="${control.name}" type="${control.type}" value="${control.value}"${range}>${output}</label>`;
 }
 
 function groupMarkup(legend, controls, prefix, trailing = "") {
   if (!controls.length) return "";
-  return `<fieldset class="tl-control-group">
+  return `<fieldset class="tl-control-group tl-control-group--${legend.toLowerCase()}">
     <legend class="tl-visually-hidden">${legend}</legend>
     <span class="tl-control-group-name" aria-hidden="true">${legend}</span>
     ${controls.map((control) => controlMarkup(control, prefix)).join("")}${trailing}

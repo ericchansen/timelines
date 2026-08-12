@@ -53,7 +53,22 @@ function createSvg(container, label, height = HEIGHT, appearance = normalizeAppe
   applyAppearanceStyles(svg, appearance);
   svg.style.setProperty("--tl-chart-ratio", String(WIDTH / height));
   container.append(svg);
+  syncChartTextScale(svg);
   return svg;
+}
+
+function syncChartTextScale(svg, viewWidth = WIDTH) {
+  const renderedWidth = svg.getBoundingClientRect?.().width || viewWidth;
+  const scale = clamp(viewWidth / Math.max(1, renderedWidth), 1, 2.5);
+  svg.dataset.textScale = String(scale);
+  svg.style.setProperty("--tl-chart-text-size", `${11 * scale}px`);
+  svg.style.setProperty("--tl-chart-emphasis-size", `${12 * scale}px`);
+  return scale;
+}
+
+function labelGutter(labels, textScale, minimum, maximum) {
+  const longest = Math.max(0, ...labels.map((label) => labelTextWidth(label) * textScale));
+  return clamp(Math.ceil(longest + 28), minimum, maximum);
 }
 
 function dataDomain(data, options, accessor = (item) => item.time) {
@@ -87,6 +102,7 @@ function resolveAxisTicks(svg, domain, interval, layout, options = {}) {
     ? renderedBox.width || WIDTH
     : renderedBox.height || viewLength;
   const intervalName = typeof interval === "string" ? interval : "day";
+  const labelScale = Number(svg.dataset.textScale) || 1;
   const candidates = createTicks(domain, interval || "day");
   const pick = (plot) =>
     selectResponsiveTicks(candidates, {
@@ -94,6 +110,7 @@ function resolveAxisTicks(svg, domain, interval, layout, options = {}) {
       orientation: layout.orientation,
       interval: intervalName,
       labelAngle: options.labelAngle,
+      labelScale,
       renderedLength: renderedLength * ((plot.end - plot.start) / viewLength),
       measureLength: Math.max(1, plot.end - plot.start)
     });
@@ -103,7 +120,10 @@ function resolveAxisTicks(svg, domain, interval, layout, options = {}) {
   const rotated = horizontal && ticks.some((tick) => tick.rotated);
   if (rotated) {
     const radians = Math.abs(ticks[0]?.labelAngle || 0) * Math.PI / 180;
-    const longestLabel = Math.max(30, ...ticks.map((tick) => estimatedLabelWidth(tick.label)));
+    const longestLabel = Math.max(
+      30 * labelScale,
+      ...ticks.map((tick) => estimatedLabelWidth(tick.label) * labelScale)
+    );
     // Every rotated label is anchored at its end, so the leftmost one reaches
     // back from the first tick. Reserve that inset instead of mirroring it.
     const start = Math.max(next.start, Math.ceil(longestLabel * Math.cos(radians)) + 8);
@@ -174,6 +194,29 @@ function drawTimeTicks(svg, scale, ticks, layout) {
   });
 }
 
+function horizontalTickClearance(ticks, textScale = 1) {
+  const rotated = ticks.filter((tick) => tick.rotated);
+  if (!rotated.length) return 36;
+  const verticalExtent = Math.max(
+    ...rotated.map((tick) => {
+      const radians = Math.abs(tick.labelAngle || 0) * Math.PI / 180;
+      return estimatedLabelWidth(tick.label) * textScale * Math.sin(radians);
+    })
+  );
+  return Math.ceil(28 + verticalExtent);
+}
+
+function fitHorizontalEventViewBox(svg, labels, axis) {
+  if (!labels.length) return;
+  const padding = 18;
+  const top = Math.min(axis - 24, ...labels.map((label) => label.y - label.height / 2)) - padding;
+  const bottom = Math.max(axis + 24, ...labels.map((label) => label.y + label.height / 2)) + padding;
+  const minY = Math.floor(top);
+  const usedHeight = Math.max(220, Math.ceil(bottom) - minY);
+  svg.setAttribute("viewBox", `0 ${minY} ${WIDTH} ${usedHeight}`);
+  svg.style.setProperty("--tl-chart-ratio", String(WIDTH / usedHeight));
+}
+
 function drawAxis(
   svg,
   domain,
@@ -237,7 +280,8 @@ function drawEventAxis(container, options, state, api, variant = "run") {
   const domain = dataDomain(data, options);
   const appearance = normalizeAppearanceOptions(options);
   const svg = createSvg(container, options.ariaLabel || "Proportional event timeline", HEIGHT, appearance);
-  const { scale, coordinates } = drawAxis(
+  const textScale = Number(svg.dataset.textScale) || 1;
+  const { scale, coordinates, ticks } = drawAxis(
     svg,
     domain,
     orientation,
@@ -252,22 +296,31 @@ function drawEventAxis(container, options, state, api, variant = "run") {
         axis: coordinates.axis,
         markerAxisOffset: event.markerAxisOffset ?? appearance.markerAxisOffset
       });
+      const width = labelTextWidth(event.label) * textScale;
       return {
         id: event.id,
         position: orientation === "horizontal" ? geometry.x : geometry.y,
+        labelPosition: orientation === "horizontal"
+          ? clamp(geometry.x, width / 2 + 12, WIDTH - width / 2 - 12)
+          : geometry.y,
         markerCross: orientation === "horizontal" ? geometry.y : geometry.x,
-        width: labelTextWidth(event.label),
-        height: 30,
+        width,
+        height: 30 * textScale,
         placement: event.labelPlacement
       };
     }),
     {
       orientation,
       axis: coordinates.axis,
-      labelGap: appearance.labelGap,
-      maxLanes: options.maxLabelLanes ?? 3
+      labelGap: appearance.labelGap * textScale,
+      positiveGap: orientation === "horizontal"
+        ? Math.max(appearance.labelGap * textScale, horizontalTickClearance(ticks, textScale))
+        : appearance.labelGap * textScale,
+      laneSize: 34 * textScale,
+      maxLanes: options.maxLabelLanes ?? Math.min(6, Math.ceil(3 * textScale))
     }
   );
+  if (orientation === "horizontal") fitHorizontalEventViewBox(svg, labels, coordinates.axis);
   const nodes = [];
 
   data.forEach((event, index) => {
@@ -325,14 +378,14 @@ function drawEventAxis(container, options, state, api, variant = "run") {
       svgElement(document, "rect", {
         width: label.width,
         height: label.height,
-        rx: 7
+        rx: 7 * textScale
       }),
       svgElement(
         document,
         "text",
         {
           x: label.width / 2,
-          y: 19,
+          y: label.height / 2 + 4 * textScale,
           "text-anchor": "middle"
         },
         event.label.length > 28 ? `${event.label.slice(0, 27)}…` : event.label
@@ -428,7 +481,7 @@ function drawBucketChart(container, options, state, api, variant) {
         ? Math.min(availableThickness, appearance.aggregateBarWidth)
         : availableThickness;
       const inset = (Math.abs(end - start) - thickness) / 2;
-      group.append(
+      const elements = [
         svgElement(document, "rect", {
           class: "tl-density-bar",
           x: orientation === "horizontal" ? Math.min(start, end) + inset : coordinates.axis,
@@ -437,7 +490,16 @@ function drawBucketChart(container, options, state, api, variant) {
           height: orientation === "horizontal" ? magnitude : thickness,
           rx: 3
         })
-      );
+      ];
+      if (bin.value !== 0 && bins.length <= 12) {
+        elements.push(svgElement(document, "text", {
+          class: "tl-value-label",
+          x: orientation === "horizontal" ? center : coordinates.axis + magnitude + 8,
+          y: orientation === "horizontal" ? coordinates.axis - magnitude - 8 : center + 4,
+          "text-anchor": orientation === "horizontal" ? "middle" : "start"
+        }, String(bin.value)));
+      }
+      group.append(...elements);
     }
 
     svg.append(group);
@@ -471,6 +533,7 @@ function drawStacked(container, options, state, api) {
   const types = [...new Set(data.map((item) => item.type))];
   const appearance = normalizeAppearanceOptions(options);
   const svg = createSvg(container, options.ariaLabel || "Stacked change plot", HEIGHT, appearance);
+  const textScale = Number(svg.dataset.textScale) || 1;
   const { scale, coordinates } = drawAxis(svg, domain, "horizontal", interval, {
     ...axisCoordinates("horizontal"),
     axis: 302
@@ -480,6 +543,34 @@ function drawStacked(container, options, state, api) {
     ...bins.map((bin) => types.reduce((sum, type) => sum + bin.items.filter((item) => item.type === type).length, 0))
   );
   const nodes = [];
+  const legend = svgElement(svg.ownerDocument, "g", {
+    class: "tl-legend",
+    transform: `translate(${PLOT_START} 42)`,
+    "aria-hidden": "true"
+  });
+  let legendX = 0;
+  types.forEach((type, typeIndex) => {
+    const label = String(type)
+      .replace(/[-_]+/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+    legend.append(
+      svgElement(svg.ownerDocument, "rect", {
+        class: `tl-legend-swatch tl-type-${typeIndex + 1}`,
+        x: legendX,
+        y: -10 * textScale,
+        width: 12 * textScale,
+        height: 12 * textScale,
+        rx: 2 * textScale
+      }),
+      svgElement(svg.ownerDocument, "text", {
+        class: "tl-legend-label",
+        x: legendX + 19 * textScale,
+        y: 0
+      }, label)
+    );
+    legendX += Math.max(104 * textScale, (labelTextWidth(label) + 42) * textScale);
+  });
+  svg.append(legend);
 
   bins.forEach((bin, binIndex) => {
     const start = scale(bin.start);
@@ -524,13 +615,16 @@ function drawSwimlanes(container, options, state, api, smallMultiples = false) {
   const height = Math.max(320, series.length * 100 + 70) + (orientation === "horizontal" ? 96 : 0);
   const appearance = normalizeAppearanceOptions(options);
   const svg = createSvg(container, options.ariaLabel || "Series swimlanes", height, appearance);
+  const textScale = Number(svg.dataset.textScale) || 1;
+  const horizontalStart = labelGutter(series, textScale, 180, 360);
+  svg.setAttribute("class", `tl-chart tl-chart--${smallMultiples ? "small-multiples" : "swimlanes"}`);
   const { scale, coordinates } = drawAxis(
     svg,
     domain,
     orientation,
     options.interval,
     orientation === "horizontal"
-      ? { axis: height - 84, start: 180, end: 890 }
+      ? { axis: height - 84, start: horizontalStart, end: 890 }
       : { axis: 74, start: 70, end: height - 50 },
     { labelAngle: appearance.labelAngle }
   );
@@ -539,6 +633,26 @@ function drawSwimlanes(container, options, state, api, smallMultiples = false) {
 
   series.forEach((name, seriesIndex) => {
     const cross = 74 + seriesIndex * 92;
+    if (!smallMultiples) {
+      const band = orientation === "horizontal"
+        ? {
+          x: laneStart,
+          y: cross - 28,
+          width: coordinates.end - laneStart,
+          height: 56
+        }
+        : {
+          x: cross - 28,
+          y: coordinates.start,
+          width: 56,
+          height: coordinates.end - coordinates.start
+        };
+      svg.append(svgElement(svg.ownerDocument, "rect", {
+        class: "tl-lane-band",
+        ...band,
+        "aria-hidden": "true"
+      }));
+    }
     svg.append(
       svgElement(svg.ownerDocument, "text", {
         class: "tl-lane-label",
@@ -548,7 +662,7 @@ function drawSwimlanes(container, options, state, api, smallMultiples = false) {
       }, name)
     );
     const axisStart = orientation === "horizontal" ? laneStart : coordinates.start;
-    const axisEnd = orientation === "horizontal" ? 890 : coordinates.end;
+    const axisEnd = coordinates.end;
     const axisCross = orientation === "horizontal" ? cross : 96 + seriesIndex * 250;
     svg.append(
       svgElement(svg.ownerDocument, "line", {
@@ -601,13 +715,15 @@ function drawRanges(container, options, state, api) {
   const height = Math.max(320, data.length * 74 + 70) + (orientation === "horizontal" ? 96 : 0);
   const appearance = normalizeAppearanceOptions(options);
   const svg = createSvg(container, options.ariaLabel || "Lifecycle range timeline", height, appearance);
+  const textScale = Number(svg.dataset.textScale) || 1;
+  const horizontalStart = labelGutter(data.map((item) => item.label), textScale, 210, 500);
   const { scale, coordinates } = drawAxis(
     svg,
     domain,
     orientation,
     options.interval,
     orientation === "horizontal"
-      ? { axis: height - 84, start: 210, end: 890 }
+      ? { axis: height - 84, start: horizontalStart, end: 890 }
       : { axis: 74, start: 56, end: height - 40 },
     { labelAngle: appearance.labelAngle }
   );
@@ -650,8 +766,14 @@ function drawRanges(container, options, state, api) {
 
 const WEEKDAY_ROWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const CALENDAR_CELL = 34;
-const CALENDAR_ORIGIN_X = 110;
 const CALENDAR_ORIGIN_Y = 34;
+const CALENDAR_VIEWBOX_WIDTH = 620;
+
+function calendarOriginX(columnCount) {
+  const gridWidth = Math.max(1, columnCount) * CALENDAR_CELL - (CALENDAR_CELL - 28);
+  const weekdayGutter = 48;
+  return Math.round((CALENDAR_VIEWBOX_WIDTH - gridWidth - weekdayGutter) / 2 + weekdayGutter);
+}
 
 function drawCalendar(container, options, state, api) {
   const data = options.data || [];
@@ -661,14 +783,20 @@ function drawCalendar(container, options, state, api) {
   const document = svg.ownerDocument;
   const maximum = Math.max(1, ...bins.map((bin) => bin.value));
   const startWeek = bins.length ? (new Date(bins[0].start).getUTCDay() + 6) % 7 : 0;
+  const columnCount = Math.max(1, Math.ceil((startWeek + bins.length) / 7));
+  const originX = calendarOriginX(columnCount);
   const nodes = [];
+  svg.setAttribute("class", "tl-chart tl-chart--calendar");
+  svg.setAttribute("viewBox", `0 0 ${CALENDAR_VIEWBOX_WIDTH} 300`);
+  svg.style.setProperty("--tl-chart-ratio", String(CALENDAR_VIEWBOX_WIDTH / 300));
+  const textScale = syncChartTextScale(svg, CALENDAR_VIEWBOX_WIDTH);
 
   // Sparse weekday gutter: labelling every row crowds a 28px cell.
   WEEKDAY_ROWS.forEach((name, row) => {
     if (row % 2 !== 0) return;
     svg.append(svgElement(document, "text", {
       class: "tl-tick-label tl-tick-label--weekday",
-      x: CALENDAR_ORIGIN_X - 10,
+      x: originX - 10,
       y: CALENDAR_ORIGIN_Y + row * CALENDAR_CELL + 18,
       "text-anchor": "end"
     }, name));
@@ -679,17 +807,21 @@ function drawCalendar(container, options, state, api) {
     const dayIndex = startWeek + index;
     const column = Math.floor(dayIndex / 7);
     const row = dayIndex % 7;
-    const x = CALENDAR_ORIGIN_X + column * CALENDAR_CELL;
+    const x = originX + column * CALENDAR_CELL;
     const date = new Date(bin.start);
     const month = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
     if (month !== lastMonth) {
       lastMonth = month;
+      const monthLabel = formatResponsiveTick(bin.start, "month", 960);
       svg.append(svgElement(document, "text", {
         class: "tl-tick-label tl-tick-label--month",
-        x,
+        x: Math.min(
+          x,
+          CALENDAR_VIEWBOX_WIDTH - estimatedLabelWidth(monthLabel) * textScale - 72
+        ),
         y: CALENDAR_ORIGIN_Y - 12,
         "text-anchor": "start"
-      }, formatResponsiveTick(bin.start, "month", 960)));
+      }, monthLabel));
     }
     const group = svgElement(document, "g", {
       class: "tl-calendar-cell",
@@ -723,18 +855,21 @@ function drawJourneys(container, options, state, api) {
   const data = options.data || [];
   const series = [...new Set(data.map((item) => item.series))];
   const maxDay = Math.max(1, ...data.map((item) => finite(item.day)));
-  const scale = (day) => 200 + (finite(day) / maxDay) * 680;
   const axisY = 70 + Math.max(0, series.length - 1) * 90 + 46;
   const height = Math.max(320, axisY + 60);
   const appearance = normalizeAppearanceOptions(options);
   const svg = createSvg(container, options.ariaLabel || "Relative journeys aligned to day zero", height, appearance);
+  const textScale = Number(svg.dataset.textScale) || 1;
+  const laneStart = labelGutter(series, textScale, 200, 420);
+  const laneEnd = 880;
+  const scale = (day) => laneStart + (finite(day) / maxDay) * (laneEnd - laneStart);
   const nodes = [];
 
   series.forEach((name, seriesIndex) => {
     const y = 70 + seriesIndex * 90;
     svg.append(
       svgElement(svg.ownerDocument, "text", { class: "tl-lane-label", x: 18, y: y + 4 }, name),
-      svgElement(svg.ownerDocument, "line", { class: "tl-axis tl-axis--lane", x1: 200, y1: y, x2: 880, y2: y })
+      svgElement(svg.ownerDocument, "line", { class: "tl-axis tl-axis--lane", x1: laneStart, y1: y, x2: laneEnd, y2: y })
     );
     data.filter((item) => item.series === name).forEach((item) => {
       const x = scale(item.day);
@@ -758,9 +893,9 @@ function drawJourneys(container, options, state, api) {
   svg.append(
     svgElement(svg.ownerDocument, "line", {
       class: "tl-axis",
-      x1: 200,
+      x1: laneStart,
       y1: axisY,
-      x2: 880,
+      x2: laneEnd,
       y2: axisY,
       stroke: appearance.axisColor,
       "stroke-width": appearance.axisWidth

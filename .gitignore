@@ -7,3 +7,4 @@ build/
 .env.local
 .screenshots/
 browser-check/
+.impeccable/hook.cache.json

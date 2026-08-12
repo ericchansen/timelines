@@ -287,6 +287,8 @@ export function layoutLabels(
     orientation?: Orientation;
     axis?: number;
     labelGap?: number;
+    positiveGap?: number;
+    negativeGap?: number;
     laneSize?: number;
     maxLanes?: number;
   }
