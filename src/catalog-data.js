@@ -17,6 +17,9 @@ export const components = Object.freeze([
     dataShape: "{ id, time, label, type?, series?, markerAxisOffset?, labelPlacement? }",
     options: "orientation, domain, interval, markerAxisOffset, labelGap, maxLabelLanes",
     supportsOrientation: true,
+    supportsInterval: true,
+    supportsTickAngle: true,
+    appearance: ["axis", "marker", "offset", "label"],
     interval: "week"
   },
   {
@@ -30,6 +33,9 @@ export const components = Object.freeze([
     dataShape: "{ id, time, label }",
     options: "orientation, domain, interval, markerAxisOffset, labelGap",
     supportsOrientation: true,
+    supportsInterval: true,
+    supportsTickAngle: true,
+    appearance: ["axis", "rug", "label"],
     interval: "week"
   },
   {
@@ -45,6 +51,8 @@ export const components = Object.freeze([
     supportsOrientation: true,
     supportsInterval: true,
     supportsReducer: true,
+    supportsTickAngle: true,
+    appearance: ["axis", "lollipop"],
     interval: "week"
   },
   {
@@ -58,6 +66,8 @@ export const components = Object.freeze([
     dataShape: "{ id, time, type, label }",
     options: "domain, interval: day | week | month",
     supportsInterval: true,
+    supportsTickAngle: true,
+    appearance: ["axis", "bar"],
     interval: "week"
   },
   {
@@ -71,6 +81,8 @@ export const components = Object.freeze([
     dataShape: "{ id, time, series, label }",
     options: "orientation, domain, markerAxisOffset",
     supportsOrientation: true,
+    supportsTickAngle: true,
+    appearance: ["axis", "marker", "offset"],
     interval: "week"
   },
   {
@@ -84,6 +96,8 @@ export const components = Object.freeze([
     dataShape: "{ id, start, end, label, series? }",
     options: "orientation, domain",
     supportsOrientation: true,
+    supportsTickAngle: true,
+    appearance: ["bar"],
     dataKind: "ranges"
   },
   {
@@ -99,6 +113,8 @@ export const components = Object.freeze([
     supportsOrientation: true,
     supportsInterval: true,
     supportsReducer: true,
+    supportsTickAngle: true,
+    appearance: ["axis", "rug", "bar"],
     interval: "week"
   },
   {
@@ -111,6 +127,7 @@ export const components = Object.freeze([
     use: "Use for long-running daily patterns where weekday rhythm matters.",
     dataShape: "{ id, time, value?, label }",
     options: "domain, reducer",
+    appearance: ["bar"],
     interval: "day"
   },
   {
@@ -123,6 +140,7 @@ export const components = Object.freeze([
     use: "Use to compare progression after a common starting moment.",
     dataShape: "{ id, day, series, label }",
     options: "selectedId",
+    appearance: ["axis", "marker"],
     dataKind: "journeys"
   },
   {
@@ -136,6 +154,8 @@ export const components = Object.freeze([
     dataShape: "{ id, time, series, label }",
     options: "orientation, domain",
     supportsOrientation: true,
+    supportsTickAngle: true,
+    appearance: ["axis", "marker", "offset"],
     interval: "week"
   },
   {
@@ -148,6 +168,8 @@ export const components = Object.freeze([
     use: "Use for dense or long timelines that need navigation without losing context.",
     dataShape: "{ id, time, label, value? }",
     options: "visibleRange, minimumDuration, showDensityTrack, densityInterval, onRangeChange",
+    supportsTickAngle: true,
+    appearance: ["axis", "marker", "bar"],
     commands: [
       "Drag the viewport to pan the detail range",
       "Drag either handle to resize the range",
@@ -167,6 +189,7 @@ export const components = Object.freeze([
     dataShape: "{ id, time, label, type?, series? }",
     options: "orientation",
     supportsOrientation: true,
+    appearance: ["axis", "marker"],
     commands: [
       "Use normal browser reading and link traversal",
       "No listbox or arrow-key behavior is added to this semantic pattern",

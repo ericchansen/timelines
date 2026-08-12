@@ -1,12 +1,12 @@
 import { components, defaultCommands } from "./catalog-data.js";
 import { attachThemeToggle } from "./core/theme.js";
+import { createRendererControls } from "./controls.js";
 import { rendererRegistry } from "./renderers.js";
 import {
   denseSyntheticEvents,
   syntheticEvents,
   syntheticJourneys,
-  syntheticRanges,
-  syntheticFixtureMeta
+  syntheticRanges
 } from "./fixtures/synthetic-data.js";
 
 const componentId = document.body.dataset.renderer;
@@ -15,75 +15,42 @@ if (!component) throw new Error(`Unknown timeline component: ${componentId}`);
 
 document.body.innerHTML = `
   <main class="tl-page tl-example-layout">
-    <header class="tl-page-header">
-      <div>
-        <p class="tl-eyebrow"><a href="../index.html">Timeline components</a> / Live example</p>
-        <h1 id="example-title"></h1>
-        <p class="tl-lede" id="example-summary"></p>
-      </div>
-      <div class="tl-toolbar" id="example-controls">
-        <label>Scenario
-          <select class="tl-select" id="scenario">
-            <option value="standard">Standard</option>
-            <option value="sparse">Sparse</option>
-            <option value="dense">Dense</option>
-            <option value="empty">Empty</option>
-            <option value="long">Long labels</option>
-            <option value="capped">Capped</option>
-          </select>
-        </label>
-        <label>Orientation
-          <select class="tl-select" id="orientation">
-            <option value="horizontal">Horizontal</option>
-            <option value="vertical">Vertical</option>
-          </select>
-        </label>
-        <label>Interval
-          <select class="tl-select" id="interval">
-            <option value="day">Day</option>
-            <option value="week" selected>Week</option>
-            <option value="month">Month</option>
-          </select>
-        </label>
-        <label>Reducer
-          <select class="tl-select" id="reducer">
-            <option value="count">Count</option>
-            <option value="sum">Sum</option>
-            <option value="average">Average</option>
-          </select>
-        </label>
+    <header class="tl-example-header">
+      <p class="tl-breadcrumb"><a href="../index.html">Timelines</a> / Component</p>
+      <nav class="tl-toolbar" aria-label="Example">
         <button class="tl-button" id="theme-toggle" type="button" aria-pressed="false">
           <span aria-hidden="true">◐</span><span data-theme-label>Theme</span>
         </button>
-      </div>
+        <a href="../docs/api.html">API</a>
+        <a href="../src/renderers.js">Source</a>
+      </nav>
+      <h1 id="example-title"></h1>
+      <p class="tl-lede" id="example-summary"></p>
     </header>
 
-    <section class="tl-panel" aria-labelledby="visualization-title">
-      <div class="tl-panel-header">
-        <h2 id="visualization-title">Live visualization</h2>
-        <p>Resize the browser or use the controls to exercise the same renderer handle.</p>
-      </div>
-      <div class="tl-visualization" id="example-visualization"></div>
-    </section>
+    <h2 class="tl-visually-hidden" id="visualization-title">Live visualization</h2>
+    <form class="tl-renderer-controls" id="example-controls" aria-labelledby="visualization-title"></form>
+    <div id="example-visualization"></div>
 
-    <section class="tl-doc-grid" aria-label="Component guidance">
-      <article class="tl-doc-card">
-        <h2>When to use it</h2>
-        <p id="example-use"></p>
-        <h3>Synthetic data shape</h3>
-        <p><code id="example-shape"></code></p>
-      </article>
-      <article class="tl-doc-card">
-        <h2>Relevant options</h2>
-        <p><code id="example-options"></code></p>
-        <p><a id="source-link" href="../src/renderers.js">Renderer source</a> · <a href="../docs/api.html">API reference</a></p>
-      </article>
-    </section>
+    <section class="tl-guidance" aria-label="Component guidance">
+      <h2>When to use it</h2>
+      <p id="example-use"></p>
 
-    <section class="tl-doc-card">
-      <h2>Minimal copyable code</h2>
+      <h3>Synthetic data shape</h3>
+      <table class="tl-reference" id="example-shape">
+        <thead><tr><th scope="col">Field</th><th scope="col">Requirement</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <h3>Relevant options</h3>
+      <table class="tl-reference" id="example-options">
+        <thead><tr><th scope="col">Option</th><th scope="col">Accepted values</th></tr></thead>
+        <tbody></tbody>
+      </table>
+
+      <h3>Minimal code</h3>
+      <button class="tl-reset" id="example-copy" type="button">Copy</button>
       <pre><code id="example-code"></code></pre>
-      <p class="tl-notice" id="fixture-notice"></p>
     </section>
   </main>
 
@@ -144,48 +111,85 @@ timeline.setSelection("fiction-03");
 timeline.destroy();`;
 }
 
+function fillTable(selector, rows) {
+  const body = document.querySelector(`${selector} tbody`);
+  body.replaceChildren();
+  rows.forEach(([term, detail]) => {
+    const row = document.createElement("tr");
+    const key = document.createElement("th");
+    key.scope = "row";
+    key.textContent = term;
+    const value = document.createElement("td");
+    value.textContent = detail;
+    row.append(key, value);
+    body.append(row);
+  });
+}
+
+function dataShapeRows(shape) {
+  return shape
+    .replace(/[{}]/g, "")
+    .split(",")
+    .map((field) => field.trim())
+    .filter(Boolean)
+    .map((field) =>
+      field.endsWith("?") ? [field.slice(0, -1), "Optional"] : [field, "Required"]
+    );
+}
+
+function optionRows(options) {
+  return options
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean)
+    .map((entry) => {
+      const separator = entry.indexOf(":");
+      return separator === -1
+        ? [entry, "—"]
+        : [entry.slice(0, separator).trim(), entry.slice(separator + 1).trim()];
+    });
+}
+
 document.title = `${component.title} · Timeline components`;
 document.querySelector("#example-title").textContent = component.title;
 document.querySelector("#example-summary").textContent = component.summary;
 document.querySelector("#example-use").textContent = component.use;
-document.querySelector("#example-shape").textContent = component.dataShape;
-document.querySelector("#example-options").textContent = component.options;
+fillTable("#example-shape", dataShapeRows(component.dataShape));
+fillTable("#example-options", optionRows(component.options));
 document.querySelector("#example-code").textContent = codeSample();
-document.querySelector("#source-link").href = "../src/renderers.js";
 
-const controls = document.querySelector("#example-controls");
-const orientationSelect = document.querySelector("#orientation");
-const intervalSelect = document.querySelector("#interval");
-const reducerSelect = document.querySelector("#reducer");
-
-if (!component.supportsOrientation) orientationSelect.closest("label").hidden = true;
-if (!component.supportsInterval) intervalSelect.closest("label").hidden = true;
-if (!component.supportsReducer) reducerSelect.closest("label").hidden = true;
-if (![...controls.querySelectorAll("label")].some((label) => !label.hidden)) controls.hidden = true;
+const copyButton = document.querySelector("#example-copy");
+copyButton.addEventListener("click", async () => {
+  await navigator.clipboard?.writeText(codeSample());
+  copyButton.textContent = "Copied";
+  setTimeout(() => {
+    copyButton.textContent = "Copy";
+  }, 1500);
+});
 
 const params = new URLSearchParams(location.search);
 document.documentElement.dataset.theme = params.get("theme") || document.documentElement.dataset.theme || "";
 const target = document.querySelector("#example-visualization");
 
-function rendererOptions() {
+function rendererOptions(values) {
   return {
-    data: scenarioData(document.querySelector("#scenario").value),
-    orientation: orientationSelect.value,
-    interval: intervalSelect.value,
-    reducer: reducerSelect.value,
+    ...values,
+    data: scenarioData(values.scenario),
+    orientation: values.orientation || "horizontal",
+    interval: values.interval || component.interval,
+    reducer: values.reducer || (component.id === "volume-lollipop" ? "sum" : "count"),
     showEventRug: true,
     showDensityTrack: true,
-    markerAxisOffset: 0,
-    labelGap: 22,
     ariaLabel: component.title
   };
 }
 
-const handle = rendererRegistry[component.id](target, rendererOptions());
-
-document.querySelectorAll("#scenario, #orientation, #interval, #reducer").forEach((control) => {
-  control.addEventListener("change", () => handle.update(rendererOptions()));
+let handle;
+const controls = createRendererControls(document.querySelector("#example-controls"), {
+  component,
+  onChange: (values) => handle?.update(rendererOptions(values))
 });
+handle = rendererRegistry[component.id](target, rendererOptions(controls.getValues()));
 
 const themeButton = document.querySelector("#theme-toggle");
 const removeThemeToggle = attachThemeToggle(themeButton);
@@ -221,8 +225,8 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-document.querySelector("#fixture-notice").textContent = syntheticFixtureMeta.notice;
 window.addEventListener("pagehide", () => {
   removeThemeToggle();
+  controls.destroy();
   handle.destroy();
 }, { once: true });

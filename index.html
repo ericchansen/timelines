@@ -3,28 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Timeline Components</title>
+  <title>Timelines</title>
   <meta name="description" content="A dependency-free catalog of reusable timeline renderers with synthetic data.">
   <link rel="icon" href="./src/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./src/timeline.css">
 </head>
 <body>
   <main class="tl-page">
-    <header class="tl-page-header">
-      <div>
-        <p class="tl-eyebrow">Framework-agnostic · zero dependencies</p>
-        <h1>Time, rendered honestly.</h1>
-        <p class="tl-lede">Twelve native ES module renderers share one proportional UTC scale, calendar-aware aggregation, exact marker geometry, collision-aware labels, keyboard parity, and explicit lifecycle handles.</p>
-      </div>
-      <div class="tl-toolbar">
+    <header class="tl-site-header">
+      <h1>Timelines</h1>
+      <nav class="tl-toolbar" aria-label="Catalog">
         <button class="tl-button" id="theme-toggle" type="button" aria-pressed="false">
-          <span aria-hidden="true">◐</span>
-          <span data-theme-label>Dark theme</span>
+          <span aria-hidden="true">◐</span><span data-theme-label>Dark theme</span>
         </button>
-        <a class="tl-button" href="./docs/index.html">Read the docs</a>
-      </div>
+        <a href="./docs/index.html">Docs</a>
+        <a href="https://github.com/ericchansen/timelines">Source</a>
+      </nav>
     </header>
-    <p class="tl-notice">Every preview below is live and uses obviously fictional data. No real accounts, identifiers, payloads, or operational records are included.</p>
     <div id="catalog"></div>
   </main>
   <script type="module" src="./src/catalog.js"></script>

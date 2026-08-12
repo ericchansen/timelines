@@ -16,6 +16,8 @@ import {
 import { labelTextWidth, layoutLabels, markerGeometry } from "./core/geometry.js";
 import { attachEventInteractions, attachPointerDrag } from "./core/interaction.js";
 import { createRenderer } from "./core/renderer.js";
+import { applyAppearanceStyles, normalizeAppearanceOptions } from "./core/appearance.js";
+import { selectResponsiveTicks, estimatedLabelWidth, formatResponsiveTick } from "./core/ticks.js";
 
 const SVG_NS = "http://www.w3.org/2000/svg";
 const WIDTH = 960;
@@ -39,7 +41,7 @@ function htmlElement(document, name, className, text = "") {
   return element;
 }
 
-function createSvg(container, label, height = HEIGHT) {
+function createSvg(container, label, height = HEIGHT, appearance = normalizeAppearanceOptions()) {
   const document = container.ownerDocument;
   const svg = svgElement(document, "svg", {
     class: "tl-chart",
@@ -48,6 +50,8 @@ function createSvg(container, label, height = HEIGHT) {
     "aria-label": label,
     preserveAspectRatio: "xMidYMid meet"
   });
+  applyAppearanceStyles(svg, appearance);
+  svg.style.setProperty("--tl-chart-ratio", String(WIDTH / height));
   container.append(svg);
   return svg;
 }
@@ -66,45 +70,141 @@ function axisCoordinates(orientation) {
     : { axis: 178, start: PLOT_START, end: PLOT_END };
 }
 
-function drawAxis(svg, domain, orientation, interval, coordinates = axisCoordinates(orientation)) {
-  const document = svg.ownerDocument;
-  const scale = createTimeScale(domain, [coordinates.start, coordinates.end]);
-  const horizontal = orientation !== "vertical";
-  svg.append(
-    svgElement(document, "line", {
-      class: "tl-axis",
-      x1: horizontal ? coordinates.start : coordinates.axis,
-      y1: horizontal ? coordinates.axis : coordinates.start,
-      x2: horizontal ? coordinates.end : coordinates.axis,
-      y2: horizontal ? coordinates.axis : coordinates.end
-    })
-  );
+function viewBoxHeight(svg) {
+  return Number(svg.getAttribute("viewBox")?.split(/\s+/).at(-1)) || HEIGHT;
+}
 
-  createTicks(domain, interval || "day").forEach((tick) => {
+/**
+ * Resolve the responsive tick set for a time axis and reserve the plot margins a
+ * rotated label set needs. Returns the adjusted layout so callers build their
+ * scale from the same numbers the labels were measured against.
+ */
+function resolveAxisTicks(svg, domain, interval, layout, options = {}) {
+  const horizontal = layout.orientation !== "vertical";
+  const renderedBox = svg.getBoundingClientRect?.() || {};
+  const viewLength = horizontal ? WIDTH : viewBoxHeight(svg);
+  const renderedLength = horizontal
+    ? renderedBox.width || WIDTH
+    : renderedBox.height || viewLength;
+  const intervalName = typeof interval === "string" ? interval : "day";
+  const candidates = createTicks(domain, interval || "day");
+  const pick = (plot) =>
+    selectResponsiveTicks(candidates, {
+      domain,
+      orientation: layout.orientation,
+      interval: intervalName,
+      labelAngle: options.labelAngle,
+      renderedLength: renderedLength * ((plot.end - plot.start) / viewLength),
+      measureLength: Math.max(1, plot.end - plot.start)
+    });
+
+  const next = { ...layout };
+  let ticks = pick(next);
+  const rotated = horizontal && ticks.some((tick) => tick.rotated);
+  if (rotated) {
+    const radians = Math.abs(ticks[0]?.labelAngle || 0) * Math.PI / 180;
+    const longestLabel = Math.max(30, ...ticks.map((tick) => estimatedLabelWidth(tick.label)));
+    // Every rotated label is anchored at its end, so the leftmost one reaches
+    // back from the first tick. Reserve that inset instead of mirroring it.
+    const start = Math.max(next.start, Math.ceil(longestLabel * Math.cos(radians)) + 8);
+    if (start !== next.start) {
+      // The plot just narrowed, so re-pick against the span labels actually get.
+      next.start = start;
+      ticks = pick(next);
+    }
+    if (options.reserveAxisMargin !== false) {
+      const bottomMargin = 28 + longestLabel * Math.sin(radians) + 16 * Math.cos(radians);
+      next.axis = Math.min(next.axis, viewBoxHeight(svg) - bottomMargin);
+    }
+  }
+  return { ticks, layout: next };
+}
+
+/**
+ * Draw tick marks and labels for an already-positioned time scale. Shared by the
+ * standalone axis and by renderers that lay out their own lanes or viewports.
+ */
+function drawTimeTicks(svg, scale, ticks, layout) {
+  const document = svg.ownerDocument;
+  const horizontal = layout.orientation !== "vertical";
+  const tickSize = layout.tickSize ?? 5;
+  const labelOffset = layout.labelOffset ?? 0;
+
+  ticks.forEach((tick, index) => {
     const position = scale(tick.value);
+    const rotated = horizontal && tick.rotated;
+    const angle = rotated ? tick.labelAngle || 0 : 0;
+    const labelY = layout.axis + labelOffset + (rotated ? 20 : 24);
+    const anchor = horizontal
+      ? rotated
+        ? angle < 0
+          ? "end"
+          : "start"
+        : index === 0
+          ? "start"
+          : index === ticks.length - 1
+            ? "end"
+            : "middle"
+      : "end";
+    const label = svgElement(
+      document,
+      "text",
+      {
+        class: rotated ? "tl-tick-label tl-tick-label--rotated" : "tl-tick-label",
+        x: horizontal ? position : layout.axis - 12,
+        y: horizontal ? labelY : position + 4,
+        "text-anchor": anchor,
+        transform: rotated ? `rotate(${angle} ${position} ${labelY})` : undefined,
+        "data-tick-time": Number(tick.value),
+        "aria-label": tick.fullLabel
+      },
+      tick.label
+    );
+    addTitle(label, tick.fullLabel);
     svg.append(
       svgElement(document, "line", {
         class: "tl-tick",
-        x1: horizontal ? position : coordinates.axis - 5,
-        y1: horizontal ? coordinates.axis - 5 : position,
-        x2: horizontal ? position : coordinates.axis + 5,
-        y2: horizontal ? coordinates.axis + 5 : position
+        x1: horizontal ? position : layout.axis - tickSize,
+        y1: horizontal ? layout.axis - tickSize : position,
+        x2: horizontal ? position : layout.axis + tickSize,
+        y2: horizontal ? layout.axis + tickSize : position
       }),
-      svgElement(
-        document,
-        "text",
-        {
-          class: "tl-tick-label",
-          x: horizontal ? position : coordinates.axis - 12,
-          y: horizontal ? coordinates.axis + 24 : position + 4,
-          "text-anchor": horizontal ? "middle" : "end"
-        },
-        tick.label
-      )
+      label
     );
   });
+}
 
-  return { scale, coordinates };
+function drawAxis(
+  svg,
+  domain,
+  orientation,
+  interval,
+  coordinates = axisCoordinates(orientation),
+  options = {}
+) {
+  const document = svg.ownerDocument;
+  const horizontal = orientation !== "vertical";
+  const { ticks, layout } = resolveAxisTicks(
+    svg,
+    domain,
+    interval,
+    { ...coordinates, orientation },
+    options
+  );
+  const scale = createTimeScale(domain, [layout.start, layout.end]);
+  svg.append(
+    svgElement(document, "line", {
+      class: "tl-axis",
+      x1: horizontal ? layout.start : layout.axis,
+      y1: horizontal ? layout.axis : layout.start,
+      x2: horizontal ? layout.end : layout.axis,
+      y2: horizontal ? layout.axis : layout.end
+    })
+  );
+
+  drawTimeTicks(svg, scale, ticks, layout);
+
+  return { scale, coordinates: layout, ticks };
 }
 
 function syncInteractive(nodes, state) {
@@ -135,14 +235,22 @@ function drawEventAxis(container, options, state, api, variant = "run") {
   const data = options.data || [];
   const orientation = options.orientation === "vertical" ? "vertical" : "horizontal";
   const domain = dataDomain(data, options);
-  const svg = createSvg(container, options.ariaLabel || "Proportional event timeline");
-  const { scale, coordinates } = drawAxis(svg, domain, orientation, options.interval || "week");
+  const appearance = normalizeAppearanceOptions(options);
+  const svg = createSvg(container, options.ariaLabel || "Proportional event timeline", HEIGHT, appearance);
+  const { scale, coordinates } = drawAxis(
+    svg,
+    domain,
+    orientation,
+    options.interval || "week",
+    axisCoordinates(orientation),
+    appearance
+  );
   const labels = layoutLabels(
     data.map((event) => {
       const geometry = markerGeometry(scale(event.time), {
         orientation,
         axis: coordinates.axis,
-        markerAxisOffset: event.markerAxisOffset ?? options.markerAxisOffset ?? 0
+        markerAxisOffset: event.markerAxisOffset ?? appearance.markerAxisOffset
       });
       return {
         id: event.id,
@@ -156,7 +264,7 @@ function drawEventAxis(container, options, state, api, variant = "run") {
     {
       orientation,
       axis: coordinates.axis,
-      labelGap: options.labelGap ?? 20,
+      labelGap: appearance.labelGap,
       maxLanes: options.maxLabelLanes ?? 3
     }
   );
@@ -167,7 +275,7 @@ function drawEventAxis(container, options, state, api, variant = "run") {
     const geometry = markerGeometry(scale(event.time), {
       orientation,
       axis: coordinates.axis,
-      markerAxisOffset: event.markerAxisOffset ?? options.markerAxisOffset ?? 0
+      markerAxisOffset: event.markerAxisOffset ?? appearance.markerAxisOffset
     });
     const label = labels[index];
     const group = svgElement(document, "g", {
@@ -182,7 +290,7 @@ function drawEventAxis(container, options, state, api, variant = "run") {
     }
 
     if (variant === "rug") {
-      const length = 22;
+      const length = appearance.rugLength;
       group.append(
         svgElement(document, "line", {
           class: "tl-rug-mark",
@@ -204,7 +312,7 @@ function drawEventAxis(container, options, state, api, variant = "run") {
           class: "tl-marker",
           cx: geometry.x,
           cy: geometry.y,
-          r: options.markerRadius || 7
+          r: appearance.markerRadius
         })
       );
     }
@@ -230,7 +338,7 @@ function drawEventAxis(container, options, state, api, variant = "run") {
         event.label.length > 28 ? `${event.label.slice(0, 27)}…` : event.label
       )
     );
-    addTitle(labelGroup, event.label);
+    addTitle(group, eventLabel(event));
     group.append(labelGroup);
     svg.append(group);
     nodes.push(group);
@@ -251,12 +359,22 @@ function drawBucketChart(container, options, state, api, variant) {
     reducer: options.reducer || (variant === "lollipop" ? "sum" : "count"),
     value: options.value || ((item) => item.value)
   });
-  const svg = createSvg(container, options.ariaLabel || "Time bucket chart");
+  const appearance = normalizeAppearanceOptions(options);
+  const chartHeight = orientation === "vertical" ? 520 : 400;
+  const svg = createSvg(container, options.ariaLabel || "Time bucket chart", chartHeight, appearance);
+  svg.setAttribute("class", `tl-chart tl-chart--${variant}`);
+  const chartCoordinates =
+    orientation === "horizontal"
+      ? { axis: chartHeight - 76, start: PLOT_START, end: PLOT_END }
+      : { axis: 144, start: 56, end: chartHeight - 52 };
   const { scale, coordinates } = drawAxis(svg, domain, orientation, options.interval || "day", {
-    ...axisCoordinates(orientation),
-    axis: orientation === "horizontal" ? 292 : 112
-  });
+    ...chartCoordinates
+  }, appearance);
   const maxValue = Math.max(1, ...bins.map((bin) => bin.value));
+  const maxMagnitude =
+    orientation === "horizontal"
+      ? Math.max(24, coordinates.axis - 52 - appearance.aggregateHeadSize - 28)
+      : Math.max(24, WIDTH - coordinates.axis - 58 - appearance.aggregateHeadSize - 40);
   const nodes = [];
 
   bins.forEach((bin, index) => {
@@ -264,7 +382,7 @@ function drawBucketChart(container, options, state, api, variant) {
     const start = scale(bin.start);
     const end = scale(Math.min(bin.end, domain[1]));
     const center = (start + end) / 2;
-    const magnitude = (bin.value / maxValue) * 180;
+    const magnitude = (bin.value / maxValue) * maxMagnitude;
     const group = svgElement(document, "g", {
       class: `tl-bucket tl-bucket--${variant}`,
       role: "button",
@@ -274,24 +392,47 @@ function drawBucketChart(container, options, state, api, variant) {
     group.dataset.eventId = `bucket-${index}`;
 
     if (variant === "lollipop") {
+      const showValue = bin.value !== 0 && bins.length <= 16;
       if (orientation === "horizontal") {
-        group.append(
+        const elements = [
           svgElement(document, "line", { class: "tl-lollipop-stem", x1: center, y1: coordinates.axis, x2: center, y2: coordinates.axis - magnitude }),
-          svgElement(document, "circle", { class: "tl-lollipop-head", cx: center, cy: coordinates.axis - magnitude, r: 7 })
-        );
+          svgElement(document, "circle", { class: "tl-lollipop-head", cx: center, cy: coordinates.axis - magnitude, r: appearance.aggregateHeadSize })
+        ];
+        if (showValue) {
+          elements.push(svgElement(document, "text", {
+            class: "tl-value-label",
+            x: center,
+            y: coordinates.axis - magnitude - appearance.aggregateHeadSize - 8,
+            "text-anchor": "middle"
+          }, String(bin.value)));
+        }
+        group.append(...elements);
       } else {
-        group.append(
+        const elements = [
           svgElement(document, "line", { class: "tl-lollipop-stem", x1: coordinates.axis, y1: center, x2: coordinates.axis + magnitude, y2: center }),
-          svgElement(document, "circle", { class: "tl-lollipop-head", cx: coordinates.axis + magnitude, cy: center, r: 7 })
-        );
+          svgElement(document, "circle", { class: "tl-lollipop-head", cx: coordinates.axis + magnitude, cy: center, r: appearance.aggregateHeadSize })
+        ];
+        if (showValue) {
+          elements.push(svgElement(document, "text", {
+            class: "tl-value-label",
+            x: coordinates.axis + magnitude + appearance.aggregateHeadSize + 8,
+            y: center + 4,
+            "text-anchor": "start"
+          }, String(bin.value)));
+        }
+        group.append(...elements);
       }
     } else {
-      const thickness = Math.max(3, Math.abs(end - start) - 3);
+      const availableThickness = Math.max(3, Math.abs(end - start) - 3);
+      const thickness = appearance.aggregateBarWidth
+        ? Math.min(availableThickness, appearance.aggregateBarWidth)
+        : availableThickness;
+      const inset = (Math.abs(end - start) - thickness) / 2;
       group.append(
         svgElement(document, "rect", {
           class: "tl-density-bar",
-          x: orientation === "horizontal" ? Math.min(start, end) + 1.5 : coordinates.axis,
-          y: orientation === "horizontal" ? coordinates.axis - magnitude : Math.min(start, end) + 1.5,
+          x: orientation === "horizontal" ? Math.min(start, end) + inset : coordinates.axis,
+          y: orientation === "horizontal" ? coordinates.axis - magnitude : Math.min(start, end) + inset,
           width: orientation === "horizontal" ? thickness : magnitude,
           height: orientation === "horizontal" ? magnitude : thickness,
           rx: 3
@@ -328,11 +469,12 @@ function drawStacked(container, options, state, api) {
   const interval = options.interval || "week";
   const bins = aggregateTimeBuckets(data, { domain, interval, reducer: "count" });
   const types = [...new Set(data.map((item) => item.type))];
-  const svg = createSvg(container, options.ariaLabel || "Stacked change plot");
+  const appearance = normalizeAppearanceOptions(options);
+  const svg = createSvg(container, options.ariaLabel || "Stacked change plot", HEIGHT, appearance);
   const { scale, coordinates } = drawAxis(svg, domain, "horizontal", interval, {
     ...axisCoordinates("horizontal"),
     axis: 302
-  });
+  }, appearance);
   const maximum = Math.max(
     1,
     ...bins.map((bin) => types.reduce((sum, type) => sum + bin.items.filter((item) => item.type === type).length, 0))
@@ -342,7 +484,11 @@ function drawStacked(container, options, state, api) {
   bins.forEach((bin, binIndex) => {
     const start = scale(bin.start);
     const end = scale(Math.min(bin.end, domain[1]));
-    const width = Math.max(4, end - start - 3);
+    const availableWidth = Math.max(4, end - start - 3);
+    const width = appearance.aggregateBarWidth
+      ? Math.min(availableWidth, appearance.aggregateBarWidth)
+      : availableWidth;
+    const x = start + Math.max(1.5, (end - start - width) / 2);
     let y = coordinates.axis;
     types.forEach((type, typeIndex) => {
       const count = bin.items.filter((item) => item.type === type).length;
@@ -350,7 +496,7 @@ function drawStacked(container, options, state, api) {
       if (height === 0) return;
       const node = svgElement(svg.ownerDocument, "rect", {
         class: `tl-stack-segment tl-type-${typeIndex + 1}`,
-        x: start + 1.5,
+        x,
         y: y - height,
         width,
         height,
@@ -375,9 +521,20 @@ function drawSwimlanes(container, options, state, api, smallMultiples = false) {
   const orientation = options.orientation === "vertical" ? "vertical" : "horizontal";
   const domain = dataDomain(data, options);
   const series = [...new Set(data.map((item) => item.series))];
-  const height = Math.max(320, series.length * 100 + 70);
-  const svg = createSvg(container, options.ariaLabel || "Series swimlanes", height);
-  const scale = createTimeScale(domain, orientation === "horizontal" ? [180, 890] : [70, height - 50]);
+  const height = Math.max(320, series.length * 100 + 70) + (orientation === "horizontal" ? 96 : 0);
+  const appearance = normalizeAppearanceOptions(options);
+  const svg = createSvg(container, options.ariaLabel || "Series swimlanes", height, appearance);
+  const { scale, coordinates } = drawAxis(
+    svg,
+    domain,
+    orientation,
+    options.interval,
+    orientation === "horizontal"
+      ? { axis: height - 84, start: 180, end: 890 }
+      : { axis: 74, start: 70, end: height - 50 },
+    { labelAngle: appearance.labelAngle }
+  );
+  const laneStart = coordinates.start;
   const nodes = [];
 
   series.forEach((name, seriesIndex) => {
@@ -390,8 +547,8 @@ function drawSwimlanes(container, options, state, api, smallMultiples = false) {
         "text-anchor": orientation === "horizontal" ? "start" : "middle"
       }, name)
     );
-    const axisStart = orientation === "horizontal" ? 180 : 56;
-    const axisEnd = orientation === "horizontal" ? 890 : height - 50;
+    const axisStart = orientation === "horizontal" ? laneStart : coordinates.start;
+    const axisEnd = orientation === "horizontal" ? 890 : coordinates.end;
     const axisCross = orientation === "horizontal" ? cross : 96 + seriesIndex * 250;
     svg.append(
       svgElement(svg.ownerDocument, "line", {
@@ -408,7 +565,7 @@ function drawSwimlanes(container, options, state, api, smallMultiples = false) {
       const geometry = markerGeometry(primary, {
         orientation,
         axis: axisCross,
-        markerAxisOffset: event.markerAxisOffset ?? options.markerAxisOffset ?? 0
+        markerAxisOffset: event.markerAxisOffset ?? appearance.markerAxisOffset
       });
       const group = svgElement(svg.ownerDocument, "g", {
         class: smallMultiples ? "tl-event tl-event--small-multiple" : "tl-event tl-event--lane",
@@ -419,7 +576,7 @@ function drawSwimlanes(container, options, state, api, smallMultiples = false) {
       group.dataset.eventId = event.id;
       group.append(
         svgElement(svg.ownerDocument, "circle", { class: "tl-marker-hit", cx: geometry.x, cy: geometry.y, r: 16 }),
-        svgElement(svg.ownerDocument, "circle", { class: "tl-marker", cx: geometry.x, cy: geometry.y, r: 6 })
+        svgElement(svg.ownerDocument, "circle", { class: "tl-marker", cx: geometry.x, cy: geometry.y, r: appearance.markerRadius })
       );
       addTitle(group, event.label);
       svg.append(group);
@@ -441,9 +598,19 @@ function drawRanges(container, options, state, api) {
         ? [Math.min(...rangeTimes), Math.max(...rangeTimes)]
         : [Date.UTC(2026, 0, 1), Date.UTC(2026, 0, 2)])
   );
-  const height = Math.max(320, data.length * 74 + 70);
-  const svg = createSvg(container, options.ariaLabel || "Lifecycle range timeline", height);
-  const scale = createTimeScale(domain, orientation === "horizontal" ? [210, 890] : [56, height - 40]);
+  const height = Math.max(320, data.length * 74 + 70) + (orientation === "horizontal" ? 96 : 0);
+  const appearance = normalizeAppearanceOptions(options);
+  const svg = createSvg(container, options.ariaLabel || "Lifecycle range timeline", height, appearance);
+  const { scale, coordinates } = drawAxis(
+    svg,
+    domain,
+    orientation,
+    options.interval,
+    orientation === "horizontal"
+      ? { axis: height - 84, start: 210, end: 890 }
+      : { axis: 74, start: 56, end: height - 40 },
+    { labelAngle: appearance.labelAngle }
+  );
   const nodes = [];
 
   data.forEach((item, index) => {
@@ -460,13 +627,13 @@ function drawRanges(container, options, state, api) {
     group.append(
       svgElement(svg.ownerDocument, "text", {
         class: "tl-lane-label",
-        x: orientation === "horizontal" ? 18 : 48 + index * 190,
+        x: orientation === "horizontal" ? 18 : 138 + index * 190,
         y: orientation === "horizontal" ? cross + 4 : 28,
         "text-anchor": "start"
       }, item.label),
       svgElement(svg.ownerDocument, "rect", {
         class: "tl-range-bar",
-        x: orientation === "horizontal" ? start : 34 + index * 190,
+        x: orientation === "horizontal" ? start : 124 + index * 190,
         y: orientation === "horizontal" ? cross - 9 : start,
         width: orientation === "horizontal" ? Math.max(2, end - start) : 28,
         height: orientation === "horizontal" ? 18 : Math.max(2, end - start),
@@ -481,28 +648,60 @@ function drawRanges(container, options, state, api) {
   return { syncState: (nextState) => syncInteractive(nodes, nextState) };
 }
 
+const WEEKDAY_ROWS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const CALENDAR_CELL = 34;
+const CALENDAR_ORIGIN_X = 110;
+const CALENDAR_ORIGIN_Y = 34;
+
 function drawCalendar(container, options, state, api) {
   const data = options.data || [];
   const bins = aggregateTimeBuckets(data, { interval: "day", reducer: options.reducer || "count" });
-  const svg = createSvg(container, options.ariaLabel || "Calendar heatmap", 300);
+  const appearance = normalizeAppearanceOptions(options);
+  const svg = createSvg(container, options.ariaLabel || "Calendar heatmap", 300, appearance);
+  const document = svg.ownerDocument;
   const maximum = Math.max(1, ...bins.map((bin) => bin.value));
   const startWeek = bins.length ? (new Date(bins[0].start).getUTCDay() + 6) % 7 : 0;
   const nodes = [];
 
+  // Sparse weekday gutter: labelling every row crowds a 28px cell.
+  WEEKDAY_ROWS.forEach((name, row) => {
+    if (row % 2 !== 0) return;
+    svg.append(svgElement(document, "text", {
+      class: "tl-tick-label tl-tick-label--weekday",
+      x: CALENDAR_ORIGIN_X - 10,
+      y: CALENDAR_ORIGIN_Y + row * CALENDAR_CELL + 18,
+      "text-anchor": "end"
+    }, name));
+  });
+
+  let lastMonth = null;
   bins.forEach((bin, index) => {
     const dayIndex = startWeek + index;
     const column = Math.floor(dayIndex / 7);
     const row = dayIndex % 7;
-    const group = svgElement(svg.ownerDocument, "g", {
+    const x = CALENDAR_ORIGIN_X + column * CALENDAR_CELL;
+    const date = new Date(bin.start);
+    const month = `${date.getUTCFullYear()}-${date.getUTCMonth()}`;
+    if (month !== lastMonth) {
+      lastMonth = month;
+      svg.append(svgElement(document, "text", {
+        class: "tl-tick-label tl-tick-label--month",
+        x,
+        y: CALENDAR_ORIGIN_Y - 12,
+        "text-anchor": "start"
+      }, formatResponsiveTick(bin.start, "month", 960)));
+    }
+    const group = svgElement(document, "g", {
       class: "tl-calendar-cell",
       role: "button",
       "aria-label": `${bin.label}: ${bin.value}`,
       "data-event-id": `calendar-${index}`,
-      transform: `translate(${110 + column * 34} ${34 + row * 34})`
+      transform: `translate(${x} ${CALENDAR_ORIGIN_Y + row * CALENDAR_CELL})`
     });
     group.dataset.eventId = `calendar-${index}`;
     group.style.setProperty("--tl-intensity", String(bin.value / maximum));
-    group.append(svgElement(svg.ownerDocument, "rect", { width: 28, height: 28, rx: 5 }));
+    group.append(svgElement(document, "rect", { width: 28, height: 28, rx: 5 }));
+    addTitle(group, `${bin.label}: ${bin.value}`);
     svg.append(group);
     nodes.push(group);
   });
@@ -511,21 +710,31 @@ function drawCalendar(container, options, state, api) {
   return { syncState: (nextState) => syncInteractive(nodes, nextState) };
 }
 
+function relativeDayTicks(maxDay) {
+  const strides = [1, 2, 5, 7, 14, 28, 56, 91, 182, 364];
+  const stride = strides.find((value) => maxDay / value <= 6) ?? Math.ceil(maxDay / 6);
+  const ticks = [];
+  for (let day = 0; day <= maxDay; day += stride) ticks.push(day);
+  if (ticks.at(-1) !== maxDay) ticks.push(maxDay);
+  return ticks;
+}
+
 function drawJourneys(container, options, state, api) {
   const data = options.data || [];
   const series = [...new Set(data.map((item) => item.series))];
   const maxDay = Math.max(1, ...data.map((item) => finite(item.day)));
   const scale = (day) => 200 + (finite(day) / maxDay) * 680;
-  const height = Math.max(320, series.length * 94 + 80);
-  const svg = createSvg(container, options.ariaLabel || "Relative journeys aligned to day zero", height);
+  const axisY = 70 + Math.max(0, series.length - 1) * 90 + 46;
+  const height = Math.max(320, axisY + 60);
+  const appearance = normalizeAppearanceOptions(options);
+  const svg = createSvg(container, options.ariaLabel || "Relative journeys aligned to day zero", height, appearance);
   const nodes = [];
 
   series.forEach((name, seriesIndex) => {
     const y = 70 + seriesIndex * 90;
     svg.append(
       svgElement(svg.ownerDocument, "text", { class: "tl-lane-label", x: 18, y: y + 4 }, name),
-      svgElement(svg.ownerDocument, "line", { class: "tl-axis tl-axis--lane", x1: 200, y1: y, x2: 880, y2: y }),
-      svgElement(svg.ownerDocument, "text", { class: "tl-tick-label", x: 200, y: y + 28, "text-anchor": "middle" }, "Day 0")
+      svgElement(svg.ownerDocument, "line", { class: "tl-axis tl-axis--lane", x1: 200, y1: y, x2: 880, y2: y })
     );
     data.filter((item) => item.series === name).forEach((item) => {
       const x = scale(item.day);
@@ -538,12 +747,44 @@ function drawJourneys(container, options, state, api) {
       group.dataset.eventId = item.id;
       group.append(
         svgElement(svg.ownerDocument, "circle", { class: "tl-marker-hit", cx: x, cy: y, r: 16 }),
-        svgElement(svg.ownerDocument, "circle", { class: "tl-marker", cx: x, cy: y, r: 6 })
+        svgElement(svg.ownerDocument, "circle", { class: "tl-marker", cx: x, cy: y, r: appearance.markerRadius })
       );
       addTitle(group, item.label);
       svg.append(group);
       nodes.push(group);
     });
+  });
+
+  svg.append(
+    svgElement(svg.ownerDocument, "line", {
+      class: "tl-axis",
+      x1: 200,
+      y1: axisY,
+      x2: 880,
+      y2: axisY,
+      stroke: appearance.axisColor,
+      "stroke-width": appearance.axisWidth
+    })
+  );
+  relativeDayTicks(maxDay).forEach((day) => {
+    const x = scale(day);
+    const label = svgElement(
+      svg.ownerDocument,
+      "text",
+      { class: "tl-tick-label", x, y: axisY + 20, "text-anchor": "middle" },
+      `Day ${day}`
+    );
+    addTitle(label, `Day ${day} after each journey started`);
+    svg.append(
+      svgElement(svg.ownerDocument, "line", {
+        class: "tl-tick",
+        x1: x,
+        y1: axisY - 5,
+        x2: x,
+        y2: axisY + 5
+      }),
+      label
+    );
   });
 
   bindInteractive(nodes, "horizontal", state, api);
@@ -559,17 +800,40 @@ function drawOverviewDetail(container, options, state, api) {
     domain,
     minimumDuration
   );
-  const svg = createSvg(container, options.ariaLabel || "Linked overview and detail timeline", 430);
+  const appearance = normalizeAppearanceOptions(options);
+  const svg = createSvg(container, options.ariaLabel || "Linked overview and detail timeline", 470, appearance);
   const document = svg.ownerDocument;
-  const overviewScale = createTimeScale(domain, [PLOT_START, PLOT_END]);
-  let detailScale = createTimeScale(visible, [PLOT_START, PLOT_END]);
   const overviewY = 102;
-  const detailY = 310;
+  const detailY = 320;
+  const overviewLayout = { orientation: "horizontal", axis: overviewY, start: PLOT_START, end: PLOT_END };
+  const overviewAxis = resolveAxisTicks(svg, domain, options.overviewInterval || "month", overviewLayout, {
+    labelAngle: appearance.labelAngle,
+    reserveAxisMargin: false
+  });
+  const overviewScale = createTimeScale(domain, [overviewAxis.layout.start, overviewAxis.layout.end]);
+  const detailStart = overviewAxis.layout.start;
+  let detailScale = createTimeScale(visible, [detailStart, PLOT_END]);
 
+  const detailAxisLine = svgElement(document, "line", {
+    class: "tl-axis",
+    x1: detailStart,
+    y1: detailY,
+    x2: PLOT_END,
+    y2: detailY
+  });
+  const detailTicks = svgElement(document, "g", { class: "tl-axis-ticks" });
   svg.append(
-    svgElement(document, "line", { class: "tl-axis", x1: PLOT_START, y1: overviewY, x2: PLOT_END, y2: overviewY }),
-    svgElement(document, "line", { class: "tl-axis", x1: PLOT_START, y1: detailY, x2: PLOT_END, y2: detailY })
+    svgElement(document, "line", {
+      class: "tl-axis",
+      x1: overviewAxis.layout.start,
+      y1: overviewY,
+      x2: PLOT_END,
+      y2: overviewY
+    }),
+    detailAxisLine,
+    detailTicks
   );
+  drawTimeTicks(svg, overviewScale, overviewAxis.ticks, { ...overviewAxis.layout, labelOffset: 32 });
 
   if (options.showDensityTrack !== false) {
     const bins = aggregateTimeBuckets(data, { domain, interval: options.densityInterval || "week", reducer: "count" });
@@ -641,7 +905,7 @@ function drawOverviewDetail(container, options, state, api) {
       "data-event-id": event.id
     });
     const hit = svgElement(document, "circle", { class: "tl-marker-hit", cx: 0, cy: detailY, r: 18 });
-    const marker = svgElement(document, "circle", { class: "tl-marker", cx: 0, cy: detailY, r: 7 });
+    const marker = svgElement(document, "circle", { class: "tl-marker", cx: 0, cy: detailY, r: appearance.markerRadius });
     group.dataset.eventId = event.id;
     group.append(hit, marker);
     addTitle(group, event.label);
@@ -668,7 +932,17 @@ function drawOverviewDetail(container, options, state, api) {
   }
 
   function updateVisibleGeometry() {
-    detailScale = createTimeScale(visible, [PLOT_START, PLOT_END]);
+    const detailAxis = resolveAxisTicks(
+      svg,
+      visible,
+      options.interval,
+      { orientation: "horizontal", axis: detailY, start: detailStart, end: PLOT_END },
+      { labelAngle: appearance.labelAngle, reserveAxisMargin: false }
+    );
+    detailScale = createTimeScale(visible, [detailAxis.layout.start, detailAxis.layout.end]);
+    detailAxisLine.setAttribute("x1", String(detailAxis.layout.start));
+    detailTicks.replaceChildren();
+    drawTimeTicks(detailTicks, detailScale, detailAxis.ticks, detailAxis.layout);
     const nextViewportX = overviewScale(visible[0]);
     const nextViewportEnd = overviewScale(visible[1]);
     viewport.setAttribute("x", String(nextViewportX));
@@ -790,6 +1064,7 @@ function drawSemanticFeed(container, options) {
   const orientation = options.orientation === "horizontal" ? "horizontal" : "vertical";
   const document = container.ownerDocument;
   const list = htmlElement(document, "ol", `tl-semantic-feed tl-semantic-feed--${orientation}`);
+  applyAppearanceStyles(list, normalizeAppearanceOptions(options));
   list.setAttribute("aria-label", options.ariaLabel || "Chronological synthetic events");
 
   data.forEach((event) => {

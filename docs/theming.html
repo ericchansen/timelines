@@ -34,6 +34,19 @@
   --tl-color-axis: #70797b;
 }</code></pre>
       <p>Color overrides do not move marker centers, lane spacing, hit targets, or collision lanes. The catalog includes explicit light and dark themes and honors reduced-motion preferences.</p>
+      <p>Horizontal datetime axes accept <code>labelAngle</code> from -90° through 0°. Every tick on an axis shares one angle and one <code>text-anchor</code>, and the axis reserves a left inset so the first rotated label stays inside the plot. Vertical tick labels remain horizontal.</p>
+      <p>Nine renderers draw a datetime tick axis and honor <code>labelAngle</code>. <code>relative-journeys</code> (elapsed-day axis), <code>calendar-heatmap</code> (weekday and month gutter), and <code>semantic-feed</code> (no axis) ignore it on purpose and show no angle control.</p>
+      <h2>Customize one renderer</h2>
+      <pre><code>renderEventRug(element, {
+  data,
+  axisColor: "#70797b",
+  axisWidth: 1.5,
+  labelAngle: -45,
+  rugColor: "#8f3550",
+  rugWidth: 2,
+  rugLength: 18
+});</code></pre>
+      <p>Renderer options write instance-local properties on generated content, so sibling timelines and global theme tokens stay unchanged.</p>
     </section>
   </main>
 </body>

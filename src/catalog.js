@@ -1,7 +1,9 @@
-import { components, catalogGroups } from "./catalog-data.js";
+import { components } from "./catalog-data.js";
 import { attachThemeToggle } from "./core/theme.js";
+import { createRendererControls } from "./controls.js";
 import { rendererRegistry } from "./renderers.js";
 import {
+  denseSyntheticEvents,
   syntheticEvents,
   syntheticJourneys,
   syntheticRanges
@@ -13,54 +15,64 @@ function dataFor(component) {
   return syntheticEvents;
 }
 
-function optionsFor(component) {
+function scenarioData(component, scenario) {
+  const data = dataFor(component);
+  if (scenario === "empty") return [];
+  if (scenario === "sparse") return data.slice(0, 3);
+  if (scenario === "capped") return data.slice(0, 6);
+  if (scenario === "dense" && component.dataKind !== "ranges" && component.dataKind !== "journeys") {
+    return denseSyntheticEvents;
+  }
+  if (scenario === "long") {
+    return data.map((item) => ({
+      ...item,
+      label: `${item.label} — an intentionally long fictional label used to verify collision handling`
+    }));
+  }
+  return data;
+}
+
+function optionsFor(component, values) {
   return {
-    data: dataFor(component),
-    interval: component.interval,
-    orientation: "horizontal",
+    ...values,
+    data: scenarioData(component, values.scenario),
+    interval: values.interval || component.interval,
+    orientation: values.orientation || "horizontal",
     showEventRug: true,
     showDensityTrack: true,
-    reducer: component.id === "volume-lollipop" ? "sum" : "count",
-    ariaLabel: `${component.title} preview`
+    reducer: values.reducer || (component.id === "volume-lollipop" ? "sum" : "count"),
+    ariaLabel: component.title
   };
 }
 
 const catalog = document.querySelector("#catalog");
-const handles = [];
+const instances = [];
 
-catalogGroups.forEach((group) => {
+components.forEach((component, index) => {
   const section = document.createElement("section");
-  section.className = "tl-catalog-group";
-  section.setAttribute("aria-labelledby", `group-${group.id}`);
+  section.className = "tl-catalog-section";
+  section.setAttribute("aria-labelledby", `component-${component.id}`);
   section.innerHTML = `
-    <div class="tl-catalog-heading">
-      <h2 id="group-${group.id}">${group.title}</h2>
-      <p>${group.description}</p>
-    </div>
-    <div class="tl-catalog-grid"></div>
+    <header class="tl-component-heading">
+      <h2 id="component-${component.id}"><span aria-hidden="true">${String(index + 1).padStart(2, "0")}</span>${component.title}</h2>
+      <a class="tl-detail-link" href="./examples/${component.file}">Details and code</a>
+      <p>${component.summary}</p>
+    </header>
+    <form class="tl-renderer-controls"></form>
+    <div class="tl-catalog-visualization" aria-label="${component.title} live renderer"></div>
   `;
-  const grid = section.querySelector(".tl-catalog-grid");
-
-  components.filter((component) => component.group === group.id).forEach((component) => {
-    const article = document.createElement("article");
-    article.className = "tl-card";
-    article.innerHTML = `
-      <div class="tl-card-copy">
-        <p class="tl-eyebrow">${group.title}</p>
-        <h3>${component.title}</h3>
-        <p>${component.summary}</p>
-      </div>
-      <div class="tl-card-preview" aria-label="${component.title} live preview"></div>
-      <div class="tl-card-actions">
-        <a href="./examples/${component.file}">Open component</a>
-      </div>
-    `;
-    grid.append(article);
-    const renderer = rendererRegistry[component.id];
-    handles.push(renderer(article.querySelector(".tl-card-preview"), optionsFor(component)));
-  });
-
   catalog.append(section);
+
+  let handle;
+  const controls = createRendererControls(section.querySelector(".tl-renderer-controls"), {
+    component,
+    onChange: (values) => handle?.update(optionsFor(component, values))
+  });
+  handle = rendererRegistry[component.id](
+    section.querySelector(".tl-catalog-visualization"),
+    optionsFor(component, controls.getValues())
+  );
+  instances.push({ handle, controls });
 });
 
 const themeButton = document.querySelector("#theme-toggle");
@@ -68,5 +80,8 @@ const removeThemeToggle = attachThemeToggle(themeButton);
 
 window.addEventListener("pagehide", () => {
   removeThemeToggle();
-  handles.forEach((handle) => handle.destroy());
+  instances.forEach(({ handle, controls }) => {
+    controls.destroy();
+    handle.destroy();
+  });
 }, { once: true });
